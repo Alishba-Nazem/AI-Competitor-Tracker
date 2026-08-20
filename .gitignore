@@ -1,0 +1,53 @@
+# Root dependencies / installs
+node_modules/
+**/node_modules/
+
+# Environment & secrets — never commit
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.p12
+*.key
+credentials.json
+secrets.json
+service-account*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Agent / IDE tooling (local only)
+.agents/
+**/.agents/
+.claude/
+**/.claude/
+.windsurf/
+**/.windsurf/
+.cursor/
+**/.cursor/
+
+# Scratch / discovery dumps (may contain scraped HTML or tokens)
+**/.tmp*/
+**/.tmp-*
+**/nike.html
+backend/.tmp-discovery/
+backend/.tmp-review-inspect/
+backend/.tmp-inspect-*.mjs
+backend/.tmp-okendo-*.mjs
+backend/.tmp-shopify-provider.mjs
+
+# Build / generated
+**/dist/
+**/.next/
+**/out/
+**/coverage/
+backend/generated/
+*.tsbuildinfo

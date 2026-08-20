@@ -1,0 +1,123 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model BusinessProfile {
+  id                    Int          @id @default(autoincrement())
+  businessName          String       @db.VarChar(255)
+  category              String       @db.VarChar(120)
+  country               String       @db.VarChar(80)
+  storeUrl              String?
+  onboardingCompletedAt DateTime     @default(now())
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  competitors           Competitor[]
+}
+
+model Competitor {
+  id                Int              @id @default(autoincrement())
+  businessProfileId Int?
+  name              String           @db.VarChar(255)
+  url               String
+  platform          String?          @db.VarChar(20)
+  isActive          Boolean          @default(true)
+  captureFrequency  String           @default("DAILY") @db.VarChar(10) // DAILY | WEEKLY
+  lastCapturedAt    DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id], onDelete: SetNull)
+  products          Product[]
+  snapshots         Snapshot[]
+  captureLogs       CaptureLog[]
+
+  @@index([name])
+  @@index([businessProfileId])
+}
+
+model Product {
+  id               Int               @id @default(autoincrement())
+  competitorId     Int
+  name             String            @db.VarChar(255)
+  url              String
+  currentPrice     Decimal           @db.Decimal(12, 2)
+  currency         String            @db.VarChar(3)
+  externalId       String?           @db.VarChar(64)
+  imageUrl         String?
+  availability     String?           @db.VarChar(20) // IN_STOCK | OUT_OF_STOCK | UNKNOWN
+  scrapeMethod     String?           @db.VarChar(20) // daraz | shopify | jsonld | unsupported
+  reviewsAvailable Boolean?
+  reviewSource     String?           @db.VarChar(40)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  competitor       Competitor        @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  snapshotProducts SnapshotProduct[]
+  reviews          Review[]
+
+  @@index([competitorId])
+  @@index([name])
+  @@index([competitorId, url])
+}
+
+model Snapshot {
+  id           Int               @id @default(autoincrement())
+  competitorId Int
+  createdAt    DateTime          @default(now())
+  competitor   Competitor        @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  products     SnapshotProduct[]
+
+  @@index([competitorId])
+  @@index([createdAt])
+}
+
+model SnapshotProduct {
+  id         Int      @id @default(autoincrement())
+  snapshotId Int
+  productId  Int
+  name       String   @db.VarChar(255)
+  url        String
+  price        Decimal  @db.Decimal(12, 2)
+  currency     String   @db.VarChar(3)
+  availability String?  @db.VarChar(20) // IN_STOCK | OUT_OF_STOCK | UNKNOWN; null on older snapshots
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  snapshot   Snapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, productId])
+  @@index([snapshotId])
+  @@index([productId])
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  externalId String   @db.VarChar(64)
+  rating     Decimal? @db.Decimal(2, 1)
+  text       String
+  reviewDate DateTime?
+  source     String   @db.VarChar(40)
+  createdAt  DateTime @default(now())
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, externalId])
+  @@index([productId])
+}
+
+model CaptureLog {
+  id              Int        @id @default(autoincrement())
+  competitorId    Int
+  triggeredBy     String     @db.VarChar(20) // cron | manual
+  startedAt       DateTime
+  completedAt     DateTime?
+  status          String     @db.VarChar(20) // success | partial | failed
+  productsScraped Int        @default(0)
+  reviewsScraped  Int        @default(0)
+  message         String?
+  competitor      Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@index([competitorId, startedAt])
+}
