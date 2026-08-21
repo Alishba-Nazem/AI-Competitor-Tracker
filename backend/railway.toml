@@ -1,7 +1,4 @@
-# Force Railpack (not legacy Nixpacks). Nixpacks defaults to Node 18 and
-# may not honor Node 24 the way Railpack does.
-# Railway config-as-code often resolves from this path relative to the
-# service Root Directory (/backend).
+# Used when the service Config-as-Code path is set to /backend/railway.toml.
 [build]
 builder = "RAILPACK"
 

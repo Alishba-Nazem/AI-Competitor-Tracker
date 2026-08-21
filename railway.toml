@@ -1,5 +1,10 @@
-# Railway's default Config-as-Code path is /railway.toml at the repo root
-# (it does NOT automatically follow Root Directory). This forces Railpack
-# so the backend service is not built with legacy Nixpacks (Node 18 default).
+# Railway config-as-code defaults to /railway.toml at the repo root
+# (does not automatically use /backend/railway.toml).
+# Root Directory should still be set to "backend" in the Railway service.
 [build]
 builder = "RAILPACK"
+
+[deploy]
+startCommand = "npm run railway:start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
