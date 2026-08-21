@@ -21,7 +21,9 @@ import type {
   SnapshotProduct,
 } from "./types";
 
-export const API_BASE_URL = "http://localhost:3000";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ||
+  "http://localhost:3000";
 
 export async function getErrorMessage(response: Response, fallback: string) {
   try {

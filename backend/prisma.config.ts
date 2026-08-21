@@ -9,6 +9,7 @@ export default defineConfig({
   },
 
   datasource: {
-    url: process.env["DIRECT_DATABASE_URL"],
+    // Railway Postgres usually provides DATABASE_URL; local may use DIRECT_DATABASE_URL.
+    url: process.env["DIRECT_DATABASE_URL"] ?? process.env["DATABASE_URL"],
   },
 });
