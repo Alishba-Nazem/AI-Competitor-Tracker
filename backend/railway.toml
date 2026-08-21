@@ -1,9 +1,12 @@
 # Used when Config-as-Code path is /backend/railway.toml.
 [build]
 builder = "RAILPACK"
+buildCommand = "prisma generate && nest build"
 
 [deploy]
-preDeployCommand = "npm run railway:predeploy"
-startCommand = "npm run railway:start"
+preDeployCommand = ["npx prisma db push"]
+startCommand = "node dist/src/main.js"
+healthcheckPath = "/"
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10

@@ -17,4 +17,7 @@ async function bootstrap() {
   console.log(`Listening on http://0.0.0.0:${port}`);
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('Failed to start Nest application', error);
+  process.exit(1);
+});
