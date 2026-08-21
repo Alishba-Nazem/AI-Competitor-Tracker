@@ -1,4 +1,7 @@
 {
+  "engines": {
+    "node": "24"
+  },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1"
   }

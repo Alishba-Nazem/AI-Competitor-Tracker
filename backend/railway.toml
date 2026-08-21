@@ -1,5 +1,10 @@
-# Keep this minimal. Railpack uses package.json `build` / `railway:start`
-# and resolves Node from engines.node + .nvmrc (Node 24).
+# Force Railpack (not legacy Nixpacks). Nixpacks defaults to Node 18 and
+# may not honor Node 24 the way Railpack does.
+# Railway config-as-code often resolves from this path relative to the
+# service Root Directory (/backend).
+[build]
+builder = "RAILPACK"
+
 [deploy]
 startCommand = "npm run railway:start"
 restartPolicyType = "ON_FAILURE"

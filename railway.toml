@@ -1,0 +1,5 @@
+# Railway's default Config-as-Code path is /railway.toml at the repo root
+# (it does NOT automatically follow Root Directory). This forces Railpack
+# so the backend service is not built with legacy Nixpacks (Node 18 default).
+[build]
+builder = "RAILPACK"
