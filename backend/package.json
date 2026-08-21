@@ -21,7 +21,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --forceExit",
-    "railway:start": "prisma db push && node dist/src/main.js"
+    "railway:start": "node dist/src/main.js",
+    "railway:predeploy": "prisma db push"
   },
   "dependencies": {
     "@nestjs/cli": "^11.0.0",
