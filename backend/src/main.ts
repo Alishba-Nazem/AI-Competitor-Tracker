@@ -1,15 +1,24 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
+function resolveCorsOrigins(): string[] {
+  const configured = (process.env.FRONTEND_URL ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const defaults = ['http://localhost:3001', 'http://127.0.0.1:3001'];
+  return [...new Set([...configured, ...defaults])];
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  const frontendOrigin = process.env.FRONTEND_URL ?? 'http://localhost:3001';
   app.enableCors({
-    origin: frontendOrigin
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean),
+    origin: resolveCorsOrigins(),
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   const port = Number(process.env.PORT) || 3000;
