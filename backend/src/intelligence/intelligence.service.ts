@@ -9,6 +9,7 @@ import {
   factsFromDashboard,
   fallbackBriefing,
   parseBriefingJson,
+  publicLlmFailureMessage,
 } from './briefing';
 import { ClaudeClient } from './claude.client';
 import {
@@ -155,14 +156,7 @@ export class IntelligenceService {
         ...parsed,
       };
     } catch (error) {
-      const reason =
-        error instanceof Error && error.message
-          ? error.message
-          : `${provider === 'gemini' ? 'Gemini' : 'Claude'} is unavailable.`;
-      return fallbackBriefing(
-        facts,
-        `${reason} Showing a briefing from captured prices, changes, and reviews only.`,
-      );
+      return fallbackBriefing(facts, publicLlmFailureMessage(provider, error));
     }
   }
 

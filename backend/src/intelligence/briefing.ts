@@ -171,6 +171,18 @@ export function parseBriefingJson(raw: string): Omit<
   }
 }
 
+export function publicLlmFailureMessage(
+  provider: 'gemini' | 'claude',
+  error: unknown,
+) {
+  const label = provider === 'gemini' ? 'Gemini' : 'Claude';
+  const raw = error instanceof Error ? error.message : '';
+  if (/quota|rate.?limit|resource.?exhausted|\b429\b/i.test(raw)) {
+    return `${label} is rate-limited right now. Showing a briefing from captured prices, changes, and reviews only.`;
+  }
+  return `${label} is unavailable. Showing a briefing from captured prices, changes, and reviews only.`;
+}
+
 export function fallbackBriefing(
   facts: BriefingFacts,
   reason: string,

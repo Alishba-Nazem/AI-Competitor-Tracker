@@ -3,6 +3,7 @@ import {
   buildBriefingUserPrompt,
   fallbackBriefing,
   parseBriefingJson,
+  publicLlmFailureMessage,
   type BriefingFacts,
 } from './briefing';
 
@@ -101,5 +102,15 @@ thinking { "ignore": true }
     expect(briefing.available).toBe(false);
     expect(briefing.bullets).toEqual([]);
     expect(briefing.nextActions[0]).toMatch(/Add competitor/i);
+  });
+
+  it('hides raw Gemini quota errors from the dashboard message', () => {
+    const message = publicLlmFailureMessage(
+      'gemini',
+      new Error('You exceeded your current quota, please check your plan and billing details.'),
+    );
+    expect(message).toContain('rate-limited');
+    expect(message).not.toContain('quota');
+    expect(message).not.toContain('billing');
   });
 });

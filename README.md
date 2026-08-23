@@ -82,5 +82,6 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md). Frontend is on Vercel; API and cron are on
 
 ## Capstone notes
 
+- [docs/CAPSTONE.md](./docs/CAPSTONE.md) — brief, live URLs, test counts, Lighthouse / axe evidence
 - [docs/REFLECTION.md](./docs/REFLECTION.md)
-- [docs/CAPSTONE.md](./docs/CAPSTONE.md) — brief, audit notes, and how to collect Lighthouse / axe evidence
+- [docs/evidence/](./docs/evidence/) — `lighthouse-mobile.png`, `axe-login.png`, `axe-dashboard.png`

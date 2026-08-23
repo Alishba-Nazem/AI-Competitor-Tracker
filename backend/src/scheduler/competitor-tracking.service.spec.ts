@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma.service';
 import { DiscoveryService } from '../scraper/discovery.service';
@@ -7,6 +8,8 @@ import { CompetitorTrackingService } from './competitor-tracking.service';
 
 describe('CompetitorTrackingService', () => {
   let service: CompetitorTrackingService;
+  let errorSpy: jest.SpyInstance;
+  let warnSpy: jest.SpyInstance;
   const prisma = {
     competitor: { findMany: jest.fn() },
     captureLog: { update: jest.fn() },
@@ -23,6 +26,8 @@ describe('CompetitorTrackingService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     prisma.captureLog.update.mockResolvedValue({});
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -35,6 +40,11 @@ describe('CompetitorTrackingService', () => {
     }).compile();
 
     service = module.get<CompetitorTrackingService>(CompetitorTrackingService);
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   it('processes active competitors with the existing capture logic', async () => {
@@ -129,6 +139,9 @@ describe('CompetitorTrackingService', () => {
     expect(scraperService.scrapeCompetitor).toHaveBeenNthCalledWith(2, 2, {
       triggeredBy: 'cron',
     });
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Failed to track competitor Nike (1): Price unavailable',
+    );
   });
 
   it('still captures prices when product discovery fails for a competitor', async () => {

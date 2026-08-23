@@ -2,7 +2,7 @@
 
 ## 1. Project brief
 
-Ecommerce Competitor Tracker helps small online sellers see what rivals charge, when catalogs change, and what customers complain about — using real store pages, not mock prices. It is for shop owners (especially Pakistan-market catalogs on Daraz and Shopify) who cannot check competitor sites every day. I built it because the hard problem is trustworthy capture; Claude then turns those facts into a weekly briefing.
+Ecommerce Competitor Tracker helps small online sellers see what rivals charge, when catalogs change, and what customers complain about — using real store pages, not mock prices. It is for shop owners (especially Pakistan-market catalogs on Daraz and Shopify) who cannot check competitor sites every day. I built it because the hard problem is trustworthy capture; Claude/Gemini then turns those facts into a weekly briefing.
 
 ## 2. Live application
 
@@ -24,19 +24,35 @@ cd backend && npm test
 cd frontend && npm test
 ```
 
-Backend covers scrape helpers, onboarding isolation, briefing parse/fallback. Frontend covers `FindingList`, `AuthScreen` (error `role="alert"`), and `BriefingPanel` (loading / error / Claude / empty).
+| Suite | Result (23 Aug 2026) |
+| --- | --- |
+| Backend Jest | 29 suites, **133 passed** |
+| Frontend Vitest | 6 files, **12 passed** |
 
-Paste coverage output or a screenshot here after you run `cd backend && npm test -- --coverage` and `cd frontend && npm test`.
+Backend covers scrape helpers, onboarding isolation, briefing parse/fallback, and scheduler failure handling. Frontend covers `FindingList`, `AuthScreen`, `LoginForm`, `Field` labels, dashboard loading/error, and `BriefingPanel` (loading / error / Claude / empty).
 
 ## 5. Performance and accessibility
 
-**Concrete fix from audit prep:** added a skip-to-main-content link, labeled the mobile nav as a dialog, and moved dashboard stats behind the signed-in API so the summary is not an unauthenticated 401.
+**Fixes shipped:** skip-to-main-content, labeled mobile nav dialog, WCAG 2.1 AA contrast (including remapped `slate-400`/`slate-500`), login JS split for Lighthouse, and dashboard stats loaded only after sign-in.
 
-Collect before submit:
+**Production evidence (mobile / WCAG 2.1 AA, 23 Aug 2026)**
 
-1. Chrome DevTools → Lighthouse → **Mobile**. Aim 90+ (pass bar is 85). Save the screenshot to `docs/evidence/lighthouse-mobile.png`.
-2. axe DevTools or WAVE on `/login` and `/` (after sign-in). Save to `docs/evidence/axe-login.png` and `docs/evidence/axe-dashboard.png`.
-3. Note any remaining issues you fixed in this file.
+| Check | Result |
+| --- | --- |
+| Lighthouse Performance | **85** (pass bar 85) |
+| Lighthouse Accessibility | **100** |
+| Lighthouse Best Practices | **100** |
+| Lighthouse SEO | **100** |
+| axe login | **0** issues (Critical/Serious/Moderate/Minor all 0) |
+| axe Research dashboard | **0** issues |
+
+![Lighthouse mobile on the live Research page](./evidence/lighthouse-mobile.png)
+
+![axe DevTools on /login — 0 issues](./evidence/axe-login.png)
+
+![axe DevTools on the Research dashboard — 0 issues](./evidence/axe-dashboard.png)
+
+**Remaining (not a WCAG fail):** if Gemini’s free-tier quota is exhausted, Research shows a **captured-data briefing** from stored prices/reviews instead of a raw API error. Set `GEMINI_API_KEY` on Railway with remaining quota, or wait for the daily reset, for a live Gemini/Claude JSON briefing.
 
 ## 6. Deployment
 
@@ -44,4 +60,4 @@ Filled checklist and rollback: [DEPLOYMENT.md](../DEPLOYMENT.md).
 
 ## 7. Reflection
 
-[docs/REFLECTION.md](./REFLECTION.md) — edit the last paragraph in your own voice before you submit.
+[docs/REFLECTION.md](./REFLECTION.md)

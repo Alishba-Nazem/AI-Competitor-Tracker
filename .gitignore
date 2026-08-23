@@ -44,6 +44,10 @@ backend/.tmp-inspect-*.mjs
 backend/.tmp-okendo-*.mjs
 backend/.tmp-shopify-provider.mjs
 
+# Local screenshots that accidentally include .env — never commit
+docs/backend-test.png
+docs/frontend-test.png
+
 # Build / generated
 **/dist/
 **/.next/
