@@ -1,24 +1,42 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import type { AuthUser } from '../auth/auth.service';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { WorkspaceService } from '../auth/workspace.service';
 import { ChangesService } from './changes.service';
 
 @Controller('changes')
+@UseGuards(JwtAuthGuard)
 export class ChangesController {
-  constructor(private readonly changesService: ChangesService) {}
+  constructor(
+    private readonly changesService: ChangesService,
+    private readonly workspace: WorkspaceService,
+  ) {}
 
   @Get('product/:productId/history')
-  getProductHistory(@Param('productId', ParseIntPipe) productId: number) {
+  async getProductHistory(
+    @CurrentUser() user: AuthUser,
+    @Param('productId', ParseIntPipe) productId: number,
+  ) {
+    await this.workspace.assertOwnsProduct(user.id, productId);
     return this.changesService.getProductHistory(productId);
   }
 
   @Get('competitor/:competitorId')
-  findByCompetitor(@Param('competitorId', ParseIntPipe) competitorId: number) {
+  async findByCompetitor(
+    @CurrentUser() user: AuthUser,
+    @Param('competitorId', ParseIntPipe) competitorId: number,
+  ) {
+    await this.workspace.assertOwnsCompetitor(user.id, competitorId);
     return this.changesService.findByCompetitor(competitorId);
   }
 
   @Get('competitor/:competitorId/log')
-  getCompetitorChangeLog(
+  async getCompetitorChangeLog(
+    @CurrentUser() user: AuthUser,
     @Param('competitorId', ParseIntPipe) competitorId: number,
   ) {
+    await this.workspace.assertOwnsCompetitor(user.id, competitorId);
     return this.changesService.getCompetitorChangeLog(competitorId);
   }
 }

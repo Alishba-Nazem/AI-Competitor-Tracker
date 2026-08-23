@@ -1,7 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ownedCompetitorWhere, ownedProductWhere } from '../auth/workspace.service';
 import { ChangesService } from '../changes/changes.service';
 import { PrismaService } from '../prisma.service';
 import { analyzeReviews, type StoredReview } from '../reviews/review-analysis.service';
+import {
+  BRIEFING_SYSTEM_PROMPT,
+  buildBriefingUserPrompt,
+  factsFromDashboard,
+  fallbackBriefing,
+  parseBriefingJson,
+} from './briefing';
+import { ClaudeClient } from './claude.client';
 import {
   buildMarketAnalysis,
   formatMoney,
@@ -17,17 +26,20 @@ export class IntelligenceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly changesService: ChangesService,
+    private readonly claude: ClaudeClient,
   ) {}
 
-  async getDashboard() {
-    const profile = await this.prisma.businessProfile.findFirst({
-      orderBy: { id: 'asc' },
+  async getDashboard(userId: number) {
+    const profile = await this.prisma.businessProfile.findUnique({
+      where: { userId },
     });
     const competitors = await this.prisma.competitor.findMany({
+      where: ownedCompetitorWhere(userId),
       orderBy: { id: 'asc' },
       include: { products: true },
     });
     const reviews = await this.prisma.review.findMany({
+      where: { product: ownedProductWhere(userId) },
       include: {
         product: { include: { competitor: true } },
       },
@@ -94,17 +106,69 @@ export class IntelligenceService {
     };
   }
 
-  async getMarket() {
-    const dashboard = await this.getDashboard();
+  async getMarket(userId: number) {
+    const dashboard = await this.getDashboard(userId);
     return {
       profile: dashboard.profile,
       market: dashboard.market,
     };
   }
 
-  async getCompetitor(competitorId: number) {
-    const competitor = await this.prisma.competitor.findUnique({
-      where: { id: competitorId },
+  async getBriefing(userId: number) {
+    const dashboard = await this.getDashboard(userId);
+    const facts = factsFromDashboard(dashboard);
+
+    if (
+      facts.competitorCount === 0 &&
+      facts.findings.length === 0 &&
+      facts.reviewCount === 0
+    ) {
+      return fallbackBriefing(
+        facts,
+        'Add competitors and capture store data first.',
+      );
+    }
+
+    const provider = this.claude.provider();
+    if (!provider) {
+      return fallbackBriefing(
+        facts,
+        'No Gemini or Claude API key is configured. Showing a briefing from captured prices, changes, and reviews only.',
+      );
+    }
+
+    try {
+      const raw = await this.claude.completeJson(
+        BRIEFING_SYSTEM_PROMPT,
+        buildBriefingUserPrompt(facts),
+      );
+      const parsed = parseBriefingJson(raw);
+      if (!parsed) {
+        return fallbackBriefing(
+          facts,
+          `${provider === 'gemini' ? 'Gemini' : 'Claude'} returned an unreadable briefing. Showing captured findings instead.`,
+        );
+      }
+      return {
+        source: provider,
+        available: true,
+        ...parsed,
+      };
+    } catch (error) {
+      const reason =
+        error instanceof Error && error.message
+          ? error.message
+          : `${provider === 'gemini' ? 'Gemini' : 'Claude'} is unavailable.`;
+      return fallbackBriefing(
+        facts,
+        `${reason} Showing a briefing from captured prices, changes, and reviews only.`,
+      );
+    }
+  }
+
+  async getCompetitor(userId: number, competitorId: number) {
+    const competitor = await this.prisma.competitor.findFirst({
+      where: { id: competitorId, ...ownedCompetitorWhere(userId) },
       include: { products: true },
     });
     if (!competitor) {
@@ -130,7 +194,7 @@ export class IntelligenceService {
     const insights = analyzeReviews(0, reviews.map(toStoredReview));
     const market = buildMarketAnalysis({
       category: (
-        await this.prisma.businessProfile.findFirst({ orderBy: { id: 'asc' } })
+        await this.prisma.businessProfile.findUnique({ where: { userId } })
       )?.category,
       reviews: reviews.map(toStoredReview),
       prices: capturedPrices,

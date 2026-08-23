@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { ownedCompetitorWhere } from '../auth/workspace.service';
 import { PrismaService } from '../prisma.service';
 import { CreateCompetitorDto } from './dto/create-competitor.dto';
 import { UpdateCompetitorDto } from './dto/update-competitor.dto';
@@ -7,9 +12,19 @@ import { UpdateCompetitorDto } from './dto/update-competitor.dto';
 export class CompetitorsService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  create(createCompetitorDto: CreateCompetitorDto) {
+  async create(userId: number, createCompetitorDto: CreateCompetitorDto) {
+    const profile = await this.prismaService.businessProfile.findUnique({
+      where: { userId },
+    });
+    if (!profile) {
+      throw new BadRequestException(
+        'Complete onboarding before adding competitors.',
+      );
+    }
+
     return this.prismaService.competitor.create({
       data: {
+        businessProfileId: profile.id,
         name: createCompetitorDto.name,
         url: createCompetitorDto.url,
         isActive: createCompetitorDto.isActive ?? true,
@@ -17,8 +32,9 @@ export class CompetitorsService {
     });
   }
 
-  async findAll() {
+  async findAll(userId: number) {
     const competitors = await this.prismaService.competitor.findMany({
+      where: ownedCompetitorWhere(userId),
       orderBy: { id: 'asc' },
       include: {
         captureLogs: {
@@ -42,9 +58,9 @@ export class CompetitorsService {
     });
   }
 
-  async findOne(id: number) {
-    const competitor = await this.prismaService.competitor.findUnique({
-      where: { id },
+  async findOne(userId: number, id: number) {
+    const competitor = await this.prismaService.competitor.findFirst({
+      where: { id, ...ownedCompetitorWhere(userId) },
       include: {
         captureLogs: {
           orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
@@ -69,8 +85,8 @@ export class CompetitorsService {
     };
   }
 
-  async update(id: number, updateCompetitorDto: UpdateCompetitorDto) {
-    await this.findOne(id);
+  async update(userId: number, id: number, updateCompetitorDto: UpdateCompetitorDto) {
+    await this.findOne(userId, id);
 
     return this.prismaService.competitor.update({
       where: { id },
@@ -78,8 +94,8 @@ export class CompetitorsService {
     });
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
+  async remove(userId: number, id: number) {
+    await this.findOne(userId, id);
 
     await this.prismaService.competitor.delete({
       where: { id },

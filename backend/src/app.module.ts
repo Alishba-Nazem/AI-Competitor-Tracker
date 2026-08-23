@@ -14,11 +14,13 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     PrismaModule,
+    AuthModule,
     CompetitorsModule,
     ProductsModule,
     SnapshotsModule,

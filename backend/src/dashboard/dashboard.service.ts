@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ownedCompetitorWhere, ownedProductWhere } from '../auth/workspace.service';
 import { ChangesService } from '../changes/changes.service';
 import { PrismaService } from '../prisma.service';
 
@@ -9,14 +10,20 @@ export class DashboardService {
     private readonly changesService: ChangesService,
   ) {}
 
-  async getSummary() {
+  async getSummary(userId: number) {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const owner = ownedCompetitorWhere(userId);
 
     const [competitors, products, reviews, competitorIds] = await Promise.all([
-      this.prisma.competitor.count(),
-      this.prisma.product.count(),
-      this.prisma.review.count(),
-      this.prisma.competitor.findMany({ select: { id: true } }),
+      this.prisma.competitor.count({ where: owner }),
+      this.prisma.product.count({ where: ownedProductWhere(userId) }),
+      this.prisma.review.count({
+        where: { product: ownedProductWhere(userId) },
+      }),
+      this.prisma.competitor.findMany({
+        where: owner,
+        select: { id: true },
+      }),
     ]);
 
     let changesThisWeek = 0;

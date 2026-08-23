@@ -1,32 +1,35 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ownedCompetitorWhere, ownedProductWhere } from '../auth/workspace.service';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class SnapshotProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: {
-    snapshotId: number;
-    productId: number;
-    name: string;
-    url: string;
-    price: number;
-    currency: string;
-  }) {
-    const snapshot = await this.prisma.snapshot.findUnique({
-      where: { id: data.snapshotId },
+  async create(
+    userId: number,
+    data: {
+      snapshotId: number;
+      productId: number;
+      name: string;
+      url: string;
+      price: number;
+      currency: string;
+    },
+  ) {
+    const snapshot = await this.prisma.snapshot.findFirst({
+      where: {
+        id: data.snapshotId,
+        competitor: ownedCompetitorWhere(userId),
+      },
     });
 
     if (!snapshot) {
       throw new NotFoundException('Snapshot not found');
     }
 
-    const product = await this.prisma.product.findUnique({
-      where: { id: data.productId },
+    const product = await this.prisma.product.findFirst({
+      where: { id: data.productId, ...ownedProductWhere(userId) },
     });
 
     if (!product) {
@@ -45,15 +48,32 @@ export class SnapshotProductsService {
     });
   }
 
-  async findAll(snapshotId?: number) {
+  async findAll(userId: number, snapshotId?: number) {
+    if (snapshotId) {
+      const snapshot = await this.prisma.snapshot.findFirst({
+        where: { id: snapshotId, competitor: ownedCompetitorWhere(userId) },
+        select: { id: true },
+      });
+      if (!snapshot) {
+        throw new NotFoundException('Snapshot not found');
+      }
+    }
+
     return this.prisma.snapshotProduct.findMany({
-      where: snapshotId ? { snapshotId } : undefined,
+      where: {
+        snapshot: { competitor: ownedCompetitorWhere(userId) },
+        ...(snapshotId ? { snapshotId } : {}),
+      },
       orderBy: { id: 'desc' },
     });
   }
-  async remove(id: number) {
-    const snapshotProduct = await this.prisma.snapshotProduct.findUnique({
-      where: { id },
+
+  async remove(userId: number, id: number) {
+    const snapshotProduct = await this.prisma.snapshotProduct.findFirst({
+      where: {
+        id,
+        snapshot: { competitor: ownedCompetitorWhere(userId) },
+      },
     });
 
     if (!snapshotProduct) {

@@ -5,11 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/toast";
 import { LoadingState, PageHeader, Panel } from "@/components/ui";
 import { API_BASE_URL, api } from "@/lib/api";
-import type { BusinessProfile, Competitor } from "@/lib/types";
+import { clearAuthToken, clearOnboardingCache } from "@/lib/auth";
+import type { AuthUser, BusinessProfile, Competitor } from "@/lib/types";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { pushToast } = useToast();
+  const [account, setAccount] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [loadingCompetitors, setLoadingCompetitors] = useState(true);
@@ -28,6 +30,7 @@ export default function SettingsPage() {
   }, [pushToast]);
 
   useEffect(() => {
+    void api.getCurrentUser().then(setAccount).catch(() => setAccount(null));
     void api.getBusinessProfile().then(setProfile).catch(() => setProfile(null));
   }, []);
 
@@ -64,11 +67,7 @@ export default function SettingsPage() {
     setResetting(true);
     try {
       await api.resetOnboarding();
-      try {
-        sessionStorage.removeItem("act_onboarding_completed");
-      } catch {
-        // Ignore storage failures.
-      }
+      clearOnboardingCache();
       pushToast("success", "Demo data cleared. Starting onboarding…");
       router.replace("/onboarding");
     } catch (error) {
@@ -85,6 +84,32 @@ export default function SettingsPage() {
         subtitle="Tracker configuration is managed by the connected backend."
       />
       <div className="grid gap-4 md:grid-cols-3">
+        <Panel title="Account">
+          {account ? (
+            <dl className="space-y-2 text-sm text-slate-600">
+              <div>
+                <dt className="text-slate-400">Name</dt>
+                <dd className="font-medium text-slate-800">{account.name}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">Email</dt>
+                <dd>{account.email}</dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-sm leading-6 text-slate-600">Signed in session not loaded.</p>
+          )}
+          <button
+            type="button"
+            className="button-secondary mt-4"
+            onClick={() => {
+              clearAuthToken();
+              router.replace("/login");
+            }}
+          >
+            Sign out
+          </button>
+        </Panel>
         <Panel title="Business profile">
           {profile ? (
             <dl className="space-y-2 text-sm text-slate-600">

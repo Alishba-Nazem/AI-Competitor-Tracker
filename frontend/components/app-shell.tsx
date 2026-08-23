@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { AuthGate } from "@/components/auth-gate";
 import { OnboardingGate } from "@/components/onboarding-gate";
 import type { NavKey } from "@/lib/types";
 
@@ -90,9 +91,18 @@ function NavIcon({ name }: { name: string }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const isAuth = pathname.startsWith("/login") || pathname.startsWith("/signup");
   const isOnboarding = pathname.startsWith("/onboarding");
   const current = activeKey(pathname);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  if (isAuth) {
+    return (
+      <AuthGate>
+        <main id="main-content">{children}</main>
+      </AuthGate>
+    );
+  }
 
   if (isOnboarding) {
     return (
@@ -108,8 +118,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
-          <OnboardingGate>{children}</OnboardingGate>
+        <main id="main-content" className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
+          <AuthGate>
+            <OnboardingGate>{children}</OnboardingGate>
+          </AuthGate>
         </main>
       </div>
     );
@@ -145,7 +157,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           onClick={() => setMobileOpen(false)}
           className="nav-link mt-4 text-[12px] text-slate-500"
         >
-          Business profile
+          Settings & account
         </Link>
       </nav>
     </>
@@ -153,6 +165,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-slate-900">
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-slate-200 bg-white lg:flex">
         {nav}
       </aside>
@@ -161,6 +176,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <aside
             className="flex h-full w-64 flex-col border-r border-slate-200 bg-white"
             onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
           >
             {nav}
           </aside>
@@ -180,8 +198,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
           <p className="ml-2 text-sm font-semibold text-slate-800">Ecommerce Competitor Tracker</p>
         </header>
-        <main className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-          <OnboardingGate>{children}</OnboardingGate>
+        <main id="main-content" className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+          <AuthGate>
+            <OnboardingGate>{children}</OnboardingGate>
+          </AuthGate>
         </main>
       </div>
     </div>

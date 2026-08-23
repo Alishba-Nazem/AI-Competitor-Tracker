@@ -1,3 +1,14 @@
+export type AuthUser = {
+  id: number;
+  name: string;
+  email: string;
+};
+
+export type AuthResponse = {
+  token: string;
+  user: AuthUser;
+};
+
 export type CaptureLog = {
   id: number;
   competitorId: number;
@@ -276,6 +287,16 @@ export type MarketAnalysis = {
   complaints: ReviewTheme[];
   repeatedNeeds: ReviewTheme[];
   opportunities: MarketOpportunity[];
+};
+
+export type IntelligenceBriefing = {
+  source: "gemini" | "claude" | "fallback";
+  available: boolean;
+  headline: string;
+  bullets: string[];
+  risks: string[];
+  nextActions: string[];
+  message?: string;
 };
 
 export type IntelligenceDashboard = {

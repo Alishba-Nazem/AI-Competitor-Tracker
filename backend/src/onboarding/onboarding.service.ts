@@ -24,9 +24,9 @@ export class OnboardingService {
     private readonly discoveryService: DiscoveryService,
   ) {}
 
-  async getStatus() {
-    const profile = await this.prisma.businessProfile.findFirst({
-      orderBy: { id: 'asc' },
+  async getStatus(userId: number) {
+    const profile = await this.prisma.businessProfile.findUnique({
+      where: { userId },
     });
     return {
       completed: Boolean(profile),
@@ -34,9 +34,9 @@ export class OnboardingService {
     };
   }
 
-  async getProfile() {
-    return this.prisma.businessProfile.findFirst({
-      orderBy: { id: 'asc' },
+  async getProfile(userId: number) {
+    return this.prisma.businessProfile.findUnique({
+      where: { userId },
       include: {
         competitors: {
           orderBy: { id: 'asc' },
@@ -45,16 +45,41 @@ export class OnboardingService {
     });
   }
 
-  /** Clears demo data so onboarding can be shown again. */
-  async reset() {
+  /** Clears this account's tracker data so onboarding can be shown again. */
+  async reset(userId: number) {
+    const profile = await this.prisma.businessProfile.findUnique({
+      where: { userId },
+    });
+    if (!profile) {
+      return {
+        reset: true,
+        completed: false,
+        message: 'Tracker data cleared. Onboarding is available again.',
+      };
+    }
+
     await this.prisma.$transaction([
-      this.prisma.captureLog.deleteMany(),
-      this.prisma.review.deleteMany(),
-      this.prisma.snapshotProduct.deleteMany(),
-      this.prisma.snapshot.deleteMany(),
-      this.prisma.product.deleteMany(),
-      this.prisma.competitor.deleteMany(),
-      this.prisma.businessProfile.deleteMany(),
+      this.prisma.captureLog.deleteMany({
+        where: { competitor: { businessProfileId: profile.id } },
+      }),
+      this.prisma.review.deleteMany({
+        where: { product: { competitor: { businessProfileId: profile.id } } },
+      }),
+      this.prisma.snapshotProduct.deleteMany({
+        where: { snapshot: { competitor: { businessProfileId: profile.id } } },
+      }),
+      this.prisma.snapshot.deleteMany({
+        where: { competitor: { businessProfileId: profile.id } },
+      }),
+      this.prisma.product.deleteMany({
+        where: { competitor: { businessProfileId: profile.id } },
+      }),
+      this.prisma.competitor.deleteMany({
+        where: { businessProfileId: profile.id },
+      }),
+      this.prisma.businessProfile.delete({
+        where: { id: profile.id },
+      }),
     ]);
 
     return {
@@ -64,14 +89,17 @@ export class OnboardingService {
     };
   }
 
-  async complete(dto: CompleteOnboardingDto) {
-    const existing = await this.prisma.businessProfile.findFirst();
+  async complete(userId: number, dto: CompleteOnboardingDto) {
+    const existing = await this.prisma.businessProfile.findUnique({
+      where: { userId },
+    });
     if (existing) {
       throw new ConflictException('Onboarding has already been completed.');
     }
 
     const profile = await this.prisma.businessProfile.create({
       data: {
+        userId,
         businessName: dto.businessName.trim(),
         category: dto.category.trim(),
         country: dto.country.trim(),

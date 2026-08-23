@@ -3,26 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
+import { getAuthUserId, readOnboardingCompleted, writeOnboardingCompleted } from "@/lib/auth";
 import { LoadingState } from "@/components/ui";
-
-const ONBOARDING_STATUS_KEY = "act_onboarding_completed";
-
-function readCachedCompleted() {
-  try {
-    return sessionStorage.getItem(ONBOARDING_STATUS_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeCachedCompleted(completed: boolean) {
-  try {
-    if (completed) sessionStorage.setItem(ONBOARDING_STATUS_KEY, "1");
-    else sessionStorage.removeItem(ONBOARDING_STATUS_KEY);
-  } catch {
-    // Ignore storage failures (private mode, etc.).
-  }
-}
 
 function ProtectedWorkspace({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -32,14 +14,15 @@ function ProtectedWorkspace({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    const userId = getAuthUserId();
 
-    if (readCachedCompleted()) {
+    if (readOnboardingCompleted(userId)) {
       setReady(true);
       void api
         .getOnboardingStatus()
         .then((status) => {
           if (!active) return;
-          writeCachedCompleted(status.completed);
+          writeOnboardingCompleted(status.completed, userId);
           if (!status.completed) router.replace("/onboarding");
         })
         .catch(() => undefined);
@@ -52,7 +35,7 @@ function ProtectedWorkspace({ children }: { children: ReactNode }) {
       try {
         const status = await api.getOnboardingStatus();
         if (!active) return;
-        writeCachedCompleted(status.completed);
+        writeOnboardingCompleted(status.completed, userId);
         if (!status.completed) {
           router.replace("/onboarding");
           return;

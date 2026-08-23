@@ -2,34 +2,59 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { BriefingPanel } from "@/components/briefing-panel";
 import { AddCompetitorModal } from "@/components/forms";
 import { FindingList, MarketPanel } from "@/components/intelligence";
 import { useToast } from "@/components/toast";
-import { EmptyState, StatusBadge } from "@/components/ui";
+import { EmptyState, StatCard, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { hostname } from "@/lib/format";
-import type { Competitor, IntelligenceDashboard } from "@/lib/types";
+import type {
+  Competitor,
+  DashboardSummary,
+  IntelligenceBriefing,
+  IntelligenceDashboard,
+} from "@/lib/types";
 
 export function DashboardClient() {
   const { pushToast } = useToast();
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [data, setData] = useState<IntelligenceDashboard | null>(null);
+  const [briefing, setBriefing] = useState<IntelligenceBriefing | null>(null);
+  const [briefingLoading, setBriefingLoading] = useState(true);
+  const [briefingError, setBriefingError] = useState<string | null>(null);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setBriefingLoading(true);
+    setBriefingError(null);
     try {
-      const [dashboard, nextCompetitors] = await Promise.all([
+      const [dashboard, nextCompetitors, nextSummary] = await Promise.all([
         api.getIntelligenceDashboard(),
         api.getCompetitors(),
+        api.getDashboardSummary().catch(() => null),
       ]);
       setData(dashboard);
       setCompetitors(nextCompetitors);
+      setSummary(nextSummary);
     } catch (error) {
       pushToast("error", error instanceof Error ? error.message : "Failed to load dashboard.");
     } finally {
       setLoading(false);
+    }
+
+    try {
+      setBriefing(await api.getIntelligenceBriefing());
+    } catch (error) {
+      setBriefing(null);
+      setBriefingError(
+        error instanceof Error ? error.message : "Failed to load AI briefing.",
+      );
+    } finally {
+      setBriefingLoading(false);
     }
   }, [pushToast]);
 
@@ -65,10 +90,44 @@ export function DashboardClient() {
         </div>
       </header>
 
+      {summary ? (
+        <section className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Tracker summary">
+          <StatCard
+            label="Competitors"
+            value={summary.competitors}
+            detail="Tracked competitor stores"
+          />
+          <StatCard
+            label="Products"
+            value={summary.products}
+            detail="Discovered catalog items"
+          />
+          <StatCard
+            label="Changes this week"
+            value={summary.changesThisWeek}
+            detail="Snapshot diffs in the last 7 days"
+          />
+          <StatCard
+            label="Reviews"
+            value={summary.reviews}
+            detail="Stored public customer reviews"
+          />
+        </section>
+      ) : null}
+
       {loading || !data ? (
         <DashboardSkeleton />
       ) : (
         <div className="space-y-4">
+          <section className="border border-slate-200 bg-white" aria-labelledby="briefing-heading">
+            <SectionHead title="AI briefing" titleId="briefing-heading" />
+            <BriefingPanel
+              briefing={briefing}
+              loading={briefingLoading}
+              error={briefingError}
+            />
+          </section>
+
           <section className="border border-slate-200 bg-white">
             <SectionHead title="What changed" />
             <FindingList
@@ -179,10 +238,20 @@ export function DashboardClient() {
   );
 }
 
-function SectionHead({ title, action }: { title: string; action?: React.ReactNode }) {
+function SectionHead({
+  title,
+  titleId,
+  action,
+}: {
+  title: string;
+  titleId?: string;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-2.5">
-      <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+      <h2 id={titleId} className="text-sm font-semibold text-slate-900">
+        {title}
+      </h2>
       {action}
     </div>
   );

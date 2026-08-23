@@ -8,15 +8,21 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
+import type { AuthUser } from '../auth/auth.service';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProductsService } from './products.service';
 
 @Controller('products')
+@UseGuards(JwtAuthGuard)
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
   create(
+    @CurrentUser() user: AuthUser,
     @Body()
     body: {
       competitorId: number;
@@ -26,7 +32,7 @@ export class ProductsController {
       currency: string;
     },
   ) {
-    return this.productsService.create({
+    return this.productsService.create(user.id, {
       competitorId: Number(body.competitorId),
       name: body.name,
       url: body.url,
@@ -36,19 +42,27 @@ export class ProductsController {
   }
 
   @Get()
-  findAll(@Query('competitorId') competitorId?: string) {
+  findAll(
+    @CurrentUser() user: AuthUser,
+    @Query('competitorId') competitorId?: string,
+  ) {
     return this.productsService.findAll(
+      user.id,
       competitorId ? Number(competitorId) : undefined,
     );
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.productsService.findOne(id);
+  findOne(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.productsService.findOne(user.id, id);
   }
 
   @Patch(':id')
   update(
+    @CurrentUser() user: AuthUser,
     @Param('id', ParseIntPipe) id: number,
     @Body()
     body: {
@@ -58,7 +72,7 @@ export class ProductsController {
       currency?: string;
     },
   ) {
-    return this.productsService.update(id, {
+    return this.productsService.update(user.id, id, {
       ...body,
       currentPrice:
         body.currentPrice !== undefined ? Number(body.currentPrice) : undefined,
@@ -66,7 +80,10 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.productsService.remove(id);
+  remove(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.productsService.remove(user.id, id);
   }
 }

@@ -1,4 +1,7 @@
+import { getAuthToken } from "./auth";
 import type {
+  AuthResponse,
+  AuthUser,
   BusinessProfile,
   CaptureResult,
   CompetitorChangeLog,
@@ -9,6 +12,7 @@ import type {
   CompetitorReviews,
   DashboardSummary,
   DiscoverResult,
+  IntelligenceBriefing,
   IntelligenceDashboard,
   OnboardingStatus,
   Product,
@@ -21,9 +25,11 @@ import type {
   SnapshotProduct,
 } from "./types";
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ||
-  "http://localhost:3000";
+export const API_BASE_URL = (() => {
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.trim().replace(/\/$/, "");
+  if (configured) return configured;
+  return "http://localhost:3000";
+})();
 
 export async function getErrorMessage(response: Response, fallback: string) {
   try {
@@ -37,20 +43,54 @@ export async function getErrorMessage(response: Response, fallback: string) {
 }
 
 async function request<T>(path: string, init?: RequestInit, fallback = "Request failed."): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    cache: "no-store",
-    ...init,
-    headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-  if (!response.ok) throw new Error(await getErrorMessage(response, fallback));
+  const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  let response: Response;
+  try {
+    const token = typeof window !== "undefined" ? getAuthToken() : null;
+    response = await fetch(url, {
+      cache: "no-store",
+      ...init,
+      headers: {
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init?.headers,
+      },
+    });
+  } catch {
+    const isLocalFallback = /localhost|127\.0\.0\.1/.test(API_BASE_URL);
+    throw new Error(
+      isLocalFallback
+        ? "Failed to reach the API. Set NEXT_PUBLIC_API_BASE_URL in Vercel to your Railway backend URL (no trailing slash), then redeploy."
+        : `Failed to fetch ${url}. Check the Railway backend URL and that FRONTEND_URL on Railway matches this Vercel domain.`,
+    );
+  }
+  if (!response.ok) {
+    if (response.status === 404 && /localhost:3000/.test(url)) {
+      throw new Error(
+        "The frontend sent this request to itself, not the API. Open http://localhost:3001 and keep the backend on port 3000.",
+      );
+    }
+    throw new Error(await getErrorMessage(response, fallback));
+  }
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
 export const api = {
+  signup: (body: { name: string; email: string; password: string }) =>
+    request<AuthResponse>(
+      "/auth/signup",
+      { method: "POST", body: JSON.stringify(body) },
+      "Unable to create account.",
+    ),
+  login: (body: { email: string; password: string }) =>
+    request<AuthResponse>(
+      "/auth/login",
+      { method: "POST", body: JSON.stringify(body) },
+      "Unable to sign in.",
+    ),
+  getCurrentUser: () =>
+    request<AuthUser>("/auth/me", undefined, "Unable to verify session."),
   getOnboardingStatus: () =>
     request<OnboardingStatus>("/onboarding/status", undefined, "Failed to load onboarding status."),
   getBusinessProfile: () =>
@@ -92,6 +132,12 @@ export const api = {
       "/intelligence/dashboard",
       undefined,
       "Failed to load research findings.",
+    ),
+  getIntelligenceBriefing: () =>
+    request<IntelligenceBriefing>(
+      "/intelligence/briefing",
+      undefined,
+      "Failed to load AI briefing.",
     ),
   getCompetitorIntelligence: (competitorId: number) =>
     request<CompetitorIntelligence>(

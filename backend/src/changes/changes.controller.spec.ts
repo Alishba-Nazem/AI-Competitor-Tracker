@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { AuthService } from '../auth/auth.service';
+import { WorkspaceService } from '../auth/workspace.service';
 import { ChangesController } from './changes.controller';
 import { ChangesService } from './changes.service';
+
+const user = { id: 7, name: 'Alish', email: 'alish@example.com' };
 
 describe('ChangesController', () => {
   let controller: ChangesController;
@@ -10,12 +14,20 @@ describe('ChangesController', () => {
     getProductHistory: jest.fn(),
     getCompetitorChangeLog: jest.fn(),
   };
+  const workspace = {
+    assertOwnsCompetitor: jest.fn(),
+    assertOwnsProduct: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.resetAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ChangesController],
-      providers: [{ provide: ChangesService, useValue: changesService }],
+      providers: [
+        { provide: ChangesService, useValue: changesService },
+        { provide: WorkspaceService, useValue: workspace },
+        { provide: AuthService, useValue: {} },
+      ],
     }).compile();
 
     controller = module.get<ChangesController>(ChangesController);
@@ -28,7 +40,8 @@ describe('ChangesController', () => {
     };
     changesService.getProductHistory.mockResolvedValue(response);
 
-    await expect(controller.getProductHistory(10)).resolves.toBe(response);
+    await expect(controller.getProductHistory(user, 10)).resolves.toBe(response);
+    expect(workspace.assertOwnsProduct).toHaveBeenCalledWith(7, 10);
     expect(changesService.getProductHistory).toHaveBeenCalledWith(10);
   });
 
@@ -42,7 +55,8 @@ describe('ChangesController', () => {
     };
     changesService.findByCompetitor.mockResolvedValue(response);
 
-    await expect(controller.findByCompetitor(4)).resolves.toBe(response);
+    await expect(controller.findByCompetitor(user, 4)).resolves.toBe(response);
+    expect(workspace.assertOwnsCompetitor).toHaveBeenCalledWith(7, 4);
     expect(changesService.findByCompetitor).toHaveBeenCalledWith(4);
   });
 
@@ -53,7 +67,10 @@ describe('ChangesController', () => {
     };
     changesService.getCompetitorChangeLog.mockResolvedValue(response);
 
-    await expect(controller.getCompetitorChangeLog(4)).resolves.toBe(response);
+    await expect(controller.getCompetitorChangeLog(user, 4)).resolves.toBe(
+      response,
+    );
+    expect(workspace.assertOwnsCompetitor).toHaveBeenCalledWith(7, 4);
     expect(changesService.getCompetitorChangeLog).toHaveBeenCalledWith(4);
   });
 });

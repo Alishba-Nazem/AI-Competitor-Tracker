@@ -10,7 +10,7 @@ describe('OnboardingService', () => {
   const prisma = {
     $transaction: jest.fn(async (ops: Array<Promise<unknown>>) => Promise.all(ops)),
     businessProfile: {
-      findFirst: jest.fn(),
+      findUnique: jest.fn(),
       create: jest.fn(),
       delete: jest.fn(),
       deleteMany: jest.fn(),
@@ -43,51 +43,59 @@ describe('OnboardingService', () => {
     service = module.get<OnboardingService>(OnboardingService);
   });
 
-  it('returns onboarding status when profile exists', async () => {
+  it('returns onboarding status when this user has a profile', async () => {
     const profile = {
       id: 1,
+      userId: 7,
       businessName: 'Acme',
       category: 'Fashion',
       country: 'Pakistan',
     };
-    prisma.businessProfile.findFirst.mockResolvedValue(profile);
+    prisma.businessProfile.findUnique.mockResolvedValue(profile);
 
-    await expect(service.getStatus()).resolves.toEqual({
+    await expect(service.getStatus(7)).resolves.toEqual({
       completed: true,
       profile,
     });
+    expect(prisma.businessProfile.findUnique).toHaveBeenCalledWith({
+      where: { userId: 7 },
+    });
   });
 
-  it('returns incomplete status when profile is missing', async () => {
-    prisma.businessProfile.findFirst.mockResolvedValue(null);
+  it('returns incomplete status when this user has no profile', async () => {
+    prisma.businessProfile.findUnique.mockResolvedValue(null);
 
-    await expect(service.getStatus()).resolves.toEqual({
+    await expect(service.getStatus(7)).resolves.toEqual({
       completed: false,
       profile: null,
     });
   });
 
-  it('resets tracker data so onboarding can run again', async () => {
+  it('resets only this account so onboarding can run again', async () => {
+    prisma.businessProfile.findUnique.mockResolvedValue({ id: 1, userId: 7 });
     prisma.captureLog.deleteMany.mockResolvedValue({ count: 1 });
     prisma.review.deleteMany.mockResolvedValue({ count: 1 });
     prisma.snapshotProduct.deleteMany.mockResolvedValue({ count: 1 });
     prisma.snapshot.deleteMany.mockResolvedValue({ count: 1 });
     prisma.product.deleteMany.mockResolvedValue({ count: 1 });
     prisma.competitor.deleteMany.mockResolvedValue({ count: 1 });
-    prisma.businessProfile.deleteMany.mockResolvedValue({ count: 1 });
+    prisma.businessProfile.delete.mockResolvedValue({ id: 1 });
 
-    await expect(service.reset()).resolves.toMatchObject({
+    await expect(service.reset(7)).resolves.toMatchObject({
       reset: true,
       completed: false,
     });
     expect(prisma.$transaction).toHaveBeenCalled();
+    expect(prisma.competitor.deleteMany).toHaveBeenCalledWith({
+      where: { businessProfileId: 1 },
+    });
   });
 
-  it('rejects duplicate onboarding completion', async () => {
-    prisma.businessProfile.findFirst.mockResolvedValue({ id: 1 });
+  it('rejects duplicate onboarding completion for the same user', async () => {
+    prisma.businessProfile.findUnique.mockResolvedValue({ id: 1, userId: 7 });
 
     await expect(
-      service.complete({
+      service.complete(7, {
         businessName: 'Acme',
         category: 'Fashion',
         country: 'Pakistan',
@@ -96,10 +104,11 @@ describe('OnboardingService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('creates profile, competitors, and runs discovery', async () => {
-    prisma.businessProfile.findFirst.mockResolvedValue(null);
+  it('creates profile, competitors, and runs discovery for this user', async () => {
+    prisma.businessProfile.findUnique.mockResolvedValue(null);
     prisma.businessProfile.create.mockResolvedValue({
       id: 1,
+      userId: 7,
       businessName: 'Acme',
       category: 'Fashion',
       country: 'Pakistan',
@@ -129,7 +138,7 @@ describe('OnboardingService', () => {
       });
 
     await expect(
-      service.complete({
+      service.complete(7, {
         businessName: 'Acme',
         category: 'Fashion',
         country: 'Pakistan',
@@ -159,15 +168,19 @@ describe('OnboardingService', () => {
       ],
     });
 
+    expect(prisma.businessProfile.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: 7, businessName: 'Acme' }),
+    });
     expect(prisma.competitor.create).toHaveBeenCalledTimes(2);
     expect(discoveryService.discoverCompetitor).toHaveBeenCalledWith(10);
     expect(discoveryService.discoverCompetitor).toHaveBeenCalledWith(11);
   });
 
   it('fails when no competitor discovery succeeds', async () => {
-    prisma.businessProfile.findFirst.mockResolvedValue(null);
+    prisma.businessProfile.findUnique.mockResolvedValue(null);
     prisma.businessProfile.create.mockResolvedValue({
       id: 1,
+      userId: 7,
       businessName: 'Acme',
       category: 'Fashion',
       country: 'Pakistan',
@@ -184,7 +197,7 @@ describe('OnboardingService', () => {
     prisma.businessProfile.delete.mockResolvedValue({ id: 1 });
 
     await expect(
-      service.complete({
+      service.complete(7, {
         businessName: 'Acme',
         category: 'Fashion',
         country: 'Pakistan',

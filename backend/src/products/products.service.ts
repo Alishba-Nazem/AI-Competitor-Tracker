@@ -1,17 +1,31 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ownedCompetitorWhere,
+  ownedProductWhere,
+} from '../auth/workspace.service';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: {
-    competitorId: number;
-    name: string;
-    url: string;
-    currentPrice: number;
-    currency: string;
-  }) {
+  async create(
+    userId: number,
+    data: {
+      competitorId: number;
+      name: string;
+      url: string;
+      currentPrice: number;
+      currency: string;
+    },
+  ) {
+    const competitor = await this.prisma.competitor.findFirst({
+      where: { id: data.competitorId, ...ownedCompetitorWhere(userId) },
+    });
+    if (!competitor) {
+      throw new NotFoundException('Competitor not found');
+    }
+
     return this.prisma.product.create({
       data: {
         competitorId: data.competitorId,
@@ -23,16 +37,29 @@ export class ProductsService {
     });
   }
 
-  async findAll(competitorId?: number) {
+  async findAll(userId: number, competitorId?: number) {
+    if (competitorId) {
+      const competitor = await this.prisma.competitor.findFirst({
+        where: { id: competitorId, ...ownedCompetitorWhere(userId) },
+        select: { id: true },
+      });
+      if (!competitor) {
+        throw new NotFoundException('Competitor not found');
+      }
+    }
+
     return this.prisma.product.findMany({
-      where: competitorId ? { competitorId } : undefined,
+      where: {
+        ...ownedProductWhere(userId),
+        ...(competitorId ? { competitorId } : {}),
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: number) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
+  async findOne(userId: number, id: number) {
+    const product = await this.prisma.product.findFirst({
+      where: { id, ...ownedProductWhere(userId) },
     });
 
     if (!product) {
@@ -43,6 +70,7 @@ export class ProductsService {
   }
 
   async update(
+    userId: number,
     id: number,
     data: {
       name?: string;
@@ -51,7 +79,7 @@ export class ProductsService {
       currency?: string;
     },
   ) {
-    await this.findOne(id);
+    await this.findOne(userId, id);
 
     return this.prisma.product.update({
       where: { id },
@@ -59,8 +87,8 @@ export class ProductsService {
     });
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
+  async remove(userId: number, id: number) {
+    await this.findOne(userId, id);
 
     return this.prisma.product.delete({
       where: { id },

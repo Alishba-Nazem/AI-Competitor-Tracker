@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Field, LoadingState, Panel } from "@/components/ui";
 import { api } from "@/lib/api";
+import { getAuthUserId, writeOnboardingCompleted } from "@/lib/auth";
 
 const NICHES = [
   "Bags",
@@ -166,11 +167,7 @@ export default function OnboardingPage() {
       setSummary(
         `${result.totalDiscovered} product${result.totalDiscovered === 1 ? "" : "s"} discovered across ${result.competitors.filter((item) => item.created > 0).length} competitor${result.competitors.filter((item) => item.created > 0).length === 1 ? "" : "s"}.`,
       );
-      try {
-        sessionStorage.setItem("act_onboarding_completed", "1");
-      } catch {
-        // Ignore storage failures.
-      }
+      writeOnboardingCompleted(true, getAuthUserId());
       window.setTimeout(() => {
         router.replace("/");
       }, 900);
