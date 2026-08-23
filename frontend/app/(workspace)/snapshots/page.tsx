@@ -95,9 +95,9 @@ export default function SnapshotsPage() {
                       <tr key={`${snapshot.id}-loading`}>
                         <td className="whitespace-nowrap">{dateTimeLabel(snapshot.createdAt)}</td>
                         <td>{competitorCell}</td>
-                        <td className="text-slate-400">Loading…</td>
-                        <td className="text-right text-slate-400">—</td>
-                        <td className="text-slate-400">—</td>
+                        <td className="text-stone-700">Loading…</td>
+                        <td className="text-right text-stone-700">—</td>
+                        <td className="text-stone-700">—</td>
                         <td>
                           <span className="badge badge-green">Captured</span>
                         </td>

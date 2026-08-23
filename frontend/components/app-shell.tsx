@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AuthGate } from "@/components/auth-gate";
 import { OnboardingGate } from "@/components/onboarding-gate";
 import type { NavKey } from "@/lib/types";
@@ -47,13 +47,6 @@ function NavIcon({ name }: { name: string }) {
           <path d="M10.2 13c.3-1.5 1.3-2.4 2.5-2.4 1.3 0 2.2.9 2.3 2.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
       );
-    case "products":
-      return (
-        <svg {...common}>
-          <path d="M2.5 5.2 8 2.5l5.5 2.7v6.3L8 13.5 2.5 11.5V5.2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-          <path d="M8 2.5v11" stroke="currentColor" strokeWidth="1.4" />
-        </svg>
-      );
     case "changes":
       return (
         <svg {...common}>
@@ -61,29 +54,10 @@ function NavIcon({ name }: { name: string }) {
           <path d="M10 5.5h3v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
-    case "reviews":
-      return (
-        <svg {...common}>
-          <path d="M3 3.5h10v7.2H7.2L4 13V10.7H3V3.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        </svg>
-      );
-    case "snapshots":
-      return (
-        <svg {...common}>
-          <rect x="2.5" y="3" width="11" height="10" rx="1.2" stroke="currentColor" strokeWidth="1.4" />
-          <path d="M5 6.5h6M5 9.5h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-      );
     default:
       return (
         <svg {...common}>
           <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.4" />
-          <path
-            d="M8 2.5v1.6M8 11.9v1.6M2.5 8h1.6M11.9 8h1.6M4.1 4.1l1.1 1.1M10.8 10.8l1.1 1.1M11.9 4.1l-1.1 1.1M5.2 10.8l-1.1 1.1"
-            stroke="currentColor"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-          />
         </svg>
       );
   }
@@ -91,18 +65,19 @@ function NavIcon({ name }: { name: string }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isAuth = pathname.startsWith("/login") || pathname.startsWith("/signup");
   const isOnboarding = pathname.startsWith("/onboarding");
   const current = activeKey(pathname);
+  const settingsActive = pathname.startsWith("/settings");
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  if (isAuth) {
-    return (
-      <AuthGate>
-        <main id="main-content">{children}</main>
-      </AuthGate>
-    );
-  }
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen]);
 
   if (isOnboarding) {
     return (
@@ -114,7 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="min-w-0">
               <div className="truncate text-[13px] font-semibold text-slate-900">Ecommerce Competitor Tracker</div>
-              <div className="text-[11px] text-slate-500">Account setup</div>
+              <div className="text-xs text-stone-600">Account setup</div>
             </div>
           </div>
         </header>
@@ -135,7 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <div className="min-w-0">
           <div className="truncate text-[13px] font-semibold text-slate-900">Ecommerce Competitor Tracker</div>
-          <div className="text-[11px] text-slate-500">Market tracking</div>
+          <div className="text-xs text-stone-600">Market tracking</div>
         </div>
       </div>
       <nav className="flex flex-1 flex-col justify-between px-2 py-3" aria-label="Primary">
@@ -146,6 +121,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               href={item.href}
               onClick={() => setMobileOpen(false)}
               className={`nav-link ${current === item.key ? "nav-link-active" : ""}`}
+              aria-current={current === item.key ? "page" : undefined}
             >
               <NavIcon name={item.icon} />
               {item.label}
@@ -155,7 +131,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link
           href="/settings"
           onClick={() => setMobileOpen(false)}
-          className="nav-link mt-4 text-[12px] text-slate-500"
+          className={`nav-link mt-4 ${settingsActive ? "nav-link-active" : ""}`}
+          aria-current={settingsActive ? "page" : undefined}
         >
           Settings & account
         </Link>
@@ -174,12 +151,23 @@ export function AppShell({ children }: { children: ReactNode }) {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/25 lg:hidden" onClick={() => setMobileOpen(false)}>
           <aside
+            id="mobile-nav"
             className="flex h-full w-64 flex-col border-r border-slate-200 bg-white"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
           >
+            <div className="flex justify-end px-2 pt-2">
+              <button
+                type="button"
+                className="button-ghost"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close navigation"
+              >
+                Close
+              </button>
+            </div>
             {nav}
           </aside>
         </div>
@@ -188,9 +176,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-30 flex h-12 items-center border-b border-slate-200 bg-[var(--background)] px-4 lg:hidden">
           <button
             type="button"
-            className="grid h-9 w-9 place-items-center rounded text-slate-600 hover:bg-white"
+            className="grid h-9 w-9 place-items-center rounded text-stone-700 hover:bg-white"
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-nav"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
               <path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />

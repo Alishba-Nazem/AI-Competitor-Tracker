@@ -1,24 +1,16 @@
 import Link from "next/link";
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export function AuthScreen({
   title,
   subtitle,
   children,
   footer,
-  onSubmit,
-  submitting,
-  submitLabel,
-  error,
 }: {
   title: string;
   subtitle: string;
   children: ReactNode;
   footer: ReactNode;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  submitting: boolean;
-  submitLabel: string;
-  error?: string | null;
 }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
@@ -31,37 +23,37 @@ export function AuthScreen({
             </span>
             <span>
               <span className="block text-sm font-semibold">Ecommerce Competitor Tracker</span>
-              <span className="block text-xs text-slate-400">Market tracking</span>
+              <span className="block text-xs text-slate-300">Market tracking</span>
             </span>
           </Link>
         </div>
         <div className="relative max-w-md">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-200">
             Competitor intelligence
           </p>
-          <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight">
+          <p className="mt-4 text-4xl font-semibold leading-tight tracking-tight">
             See price cuts, new products, and review shifts before they hit your store.
-          </h1>
-          <p className="mt-4 text-sm leading-6 text-slate-300">
+          </p>
+          <p className="mt-4 text-sm leading-6 text-slate-200">
             Track Shopify and Daraz competitors in one workspace. Capture prices,
             watch weekly changes, and get a Claude briefing from those stored facts.
           </p>
-          <ul className="mt-8 space-y-3 text-sm text-slate-200">
+          <ul className="mt-8 space-y-3 text-sm text-slate-100">
             <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" />
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-300" aria-hidden="true" />
               Daily, weekly, or monthly capture schedules
             </li>
             <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" />
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-300" aria-hidden="true" />
               Real store prices — never invented mock data
             </li>
             <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" />
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-300" aria-hidden="true" />
               Review themes from public customer feedback
             </li>
           </ul>
         </div>
-        <p className="relative text-xs text-slate-500">
+        <p className="relative text-xs text-slate-200">
           Built for ecommerce teams who need a live view of the market.
         </p>
       </section>
@@ -74,22 +66,10 @@ export function AuthScreen({
             </span>
             <span className="text-sm font-semibold text-slate-900">Ecommerce Competitor Tracker</span>
           </div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">{subtitle}</p>
-
-          <form className="mt-8 space-y-4" onSubmit={onSubmit}>
-            {children}
-            {error ? (
-              <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">
-                {error}
-              </p>
-            ) : null}
-            <button type="submit" className="button-primary w-full justify-center" disabled={submitting}>
-              {submitting ? "Please wait…" : submitLabel}
-            </button>
-          </form>
-
-          <p className="mt-6 text-sm text-slate-500">{footer}</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+          <p className="mt-2 text-sm leading-6 text-stone-600">{subtitle}</p>
+          {children}
+          <p className="mt-6 text-sm text-stone-600">{footer}</p>
         </div>
       </section>
     </div>

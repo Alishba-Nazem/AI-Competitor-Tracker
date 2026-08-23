@@ -31,7 +31,7 @@ export function FindingList({
   emptyText: string;
 }) {
   if (findings.length === 0) {
-    return <p className="px-4 py-6 text-sm text-slate-500">{emptyText}</p>;
+    return <p className="px-4 py-6 text-sm text-stone-600" role="status">{emptyText}</p>;
   }
 
   return (
@@ -39,7 +39,7 @@ export function FindingList({
       {findings.map((finding, index) => (
         <li key={`${finding.kind}-${finding.productId ?? finding.title}-${index}`} className="px-4 py-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-block px-1.5 py-0.5 text-[11px] font-semibold ${labelClass(finding.kind)}`}>
+            <span className={`inline-block px-1.5 py-0.5 text-xs font-semibold ${labelClass(finding.kind)}`}>
               {LABELS[finding.kind]}
             </span>
             {finding.competitorId ? (
@@ -73,13 +73,13 @@ export function ThemeColumn({
     <div>
       <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
       {items.length === 0 ? (
-        <p className="mt-2 text-sm text-slate-500">{empty}</p>
+        <p className="mt-2 text-sm text-stone-600">{empty}</p>
       ) : (
         <ul className="mt-2 space-y-1 text-sm text-slate-600">
           {items.map((item) => (
             <li key={item.theme} className="flex justify-between gap-4">
               <span className="capitalize">{item.theme}</span>
-              <span className="tabular-nums text-slate-400">{item.count}</span>
+              <span className="tabular-nums text-stone-700">{item.count}</span>
             </li>
           ))}
         </ul>
@@ -101,7 +101,7 @@ export function MarketPanel({ market }: { market: MarketAnalysis }) {
           ({market.priceBand.sampleSize} products)
         </p>
       ) : (
-        <p className="text-sm text-slate-500">No captured selling prices yet. Run Capture in a workspace.</p>
+        <p className="text-sm text-stone-600">No captured selling prices yet. Run Capture in a workspace.</p>
       )}
       <p className="text-sm text-slate-600">
         {market.reviewCount} stored review{market.reviewCount === 1 ? "" : "s"} across {market.competitorCount}{" "}
@@ -126,7 +126,7 @@ export function MarketPanel({ market }: { market: MarketAnalysis }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-stone-600">
               No repeated complaint pattern is strong enough to call a market gap yet.
             </p>
           )}

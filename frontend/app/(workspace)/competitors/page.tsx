@@ -162,7 +162,7 @@ export default function CompetitorsPage() {
                         <div className="text-sm text-slate-700">
                           Last synced: {relativeTime(lastSynced)}
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-stone-600">
                           Next sync: {relativeFuture(competitor.nextCaptureAt)}
                           {competitor.captureFrequency
                             ? ` · ${competitor.captureFrequency === "WEEKLY" ? "Weekly" : "Daily"}`

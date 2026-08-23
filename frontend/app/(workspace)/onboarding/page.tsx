@@ -198,7 +198,7 @@ export default function OnboardingPage() {
         </p>
       </header>
 
-      <ol className="mb-6 grid grid-cols-3 gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <ol className="mb-6 grid grid-cols-3 gap-2 text-xs font-semibold uppercase tracking-wide text-stone-600">
         {[
           { id: 1, label: "Your store" },
           { id: 2, label: "Competitors" },
@@ -224,7 +224,7 @@ export default function OnboardingPage() {
           <div className="space-y-5">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Your store</h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-stone-600">
                 Tell us about your store so research findings stay in context.
               </p>
             </div>
@@ -281,7 +281,7 @@ export default function OnboardingPage() {
             <div>
               <p className="text-sm font-semibold text-slate-900">Your niche: {niche}</p>
               <h2 className="mt-3 text-sm font-semibold text-slate-900">Add competitors</h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-stone-600">
                 Add stores that sell products similar to yours.
               </p>
             </div>
@@ -372,32 +372,32 @@ export default function OnboardingPage() {
           <div className="space-y-5">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Confirmation</h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-stone-600">
                 Review your setup, then start tracking.
               </p>
             </div>
 
             <dl className="space-y-3 border border-slate-200 bg-slate-50/60 p-4 text-sm">
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-stone-700">
                   Store name
                 </dt>
                 <dd className="mt-1 font-medium text-slate-900">{storeName.trim()}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-stone-700">
                   Store URL
                 </dt>
                 <dd className="mt-1 break-all text-slate-700">{storeUrl.trim()}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-stone-700">
                   Selected niche
                 </dt>
                 <dd className="mt-1 font-medium text-slate-900">{niche}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-stone-700">
                   Competitors
                 </dt>
                 <dd className="mt-2 space-y-2">

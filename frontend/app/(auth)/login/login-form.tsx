@@ -1,14 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { AuthScreen } from "@/components/auth-screen";
-import { Field } from "@/components/ui";
+import { Field } from "@/components/field";
 import { api } from "@/lib/api";
 import { setAuthSession } from "@/lib/auth";
 
-export default function LoginPage() {
+export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,22 +30,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthScreen
-      title="Welcome back"
-      subtitle="Sign in to continue tracking competitor prices, catalogs, and reviews."
-      submitLabel="Sign in"
-      submitting={submitting}
-      error={error}
-      onSubmit={onSubmit}
-      footer={
-        <>
-          New to ECT?{" "}
-          <Link href="/signup" className="font-semibold text-teal-700 hover:underline">
-            Create an account
-          </Link>
-        </>
-      }
-    >
+    <form className="mt-8 space-y-4" onSubmit={onSubmit} aria-describedby={error ? "auth-error" : undefined}>
       <Field label="Work email">
         <input
           type="email"
@@ -68,6 +51,23 @@ export default function LoginPage() {
           required
         />
       </Field>
-    </AuthScreen>
+      {error ? (
+        <p
+          id="auth-error"
+          className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+      <button
+        type="submit"
+        className="button-primary w-full justify-center"
+        disabled={submitting}
+        aria-busy={submitting}
+      >
+        {submitting ? "Please wait…" : "Sign in"}
+      </button>
+    </form>
   );
 }

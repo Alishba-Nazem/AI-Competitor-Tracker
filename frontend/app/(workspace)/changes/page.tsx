@@ -180,7 +180,7 @@ export default function ChangesPage() {
               <section key={competitor.id} className="border border-slate-200 bg-white">
                 <div className="border-b border-slate-200 px-4 py-3">
                   <h2 className="text-sm font-semibold text-slate-900">{competitor.name}</h2>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-stone-600">
                     {entries.reduce((count, entry) => count + entry.changes.length, 0)} historical change
                     {entries.reduce((count, entry) => count + entry.changes.length, 0) === 1 ? "" : "s"}
                   </p>
@@ -188,7 +188,7 @@ export default function ChangesPage() {
                 <div className="px-4">
                   {entries.map(({ entry, changes }) => (
                     <div key={`${competitor.id}-${entry.latestSnapshotId}-${entry.previousSnapshotId}`} className="py-4">
-                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-stone-600">
                         {dateTimeLabel(entry.detectedAt)} · Snapshot {entry.latestSnapshotId} vs {entry.previousSnapshotId}
                       </p>
                       <div>

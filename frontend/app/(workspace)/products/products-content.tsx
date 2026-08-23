@@ -163,7 +163,7 @@ export default function ProductsPageContent() {
       <Panel>
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <label className="block max-w-sm flex-1">
-            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-stone-700">
               Competitor filter
             </span>
             <select
@@ -252,7 +252,7 @@ export default function ProductsPageContent() {
                       </td>
                       <td className="whitespace-nowrap text-right">
                         {pending ? (
-                          <span className="text-slate-500">Awaiting capture</span>
+                          <span className="text-stone-600">Awaiting capture</span>
                         ) : (
                           <span className="font-bold text-slate-900">
                             {formatPrice(Number(product.currentPrice), product.currency)}

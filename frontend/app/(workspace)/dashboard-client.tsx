@@ -1,9 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { BriefingPanel } from "@/components/briefing-panel";
-import { AddCompetitorModal } from "@/components/forms";
 import { FindingList, MarketPanel } from "@/components/intelligence";
 import { useToast } from "@/components/toast";
 import { EmptyState, StatCard, StatusBadge } from "@/components/ui";
@@ -15,6 +15,11 @@ import type {
   IntelligenceBriefing,
   IntelligenceDashboard,
 } from "@/lib/types";
+
+const AddCompetitorModal = dynamic(
+  () => import("@/components/forms").then((mod) => mod.AddCompetitorModal),
+  { ssr: false },
+);
 
 export function DashboardClient() {
   const { pushToast } = useToast();
@@ -74,7 +79,7 @@ export function DashboardClient() {
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">
             {profile?.businessName ?? "Competitor research"}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-stone-700">
             {profile
               ? `${profile.category} · ${profile.country}. What competitors sell, charge, and what customers say.`
               : "Research findings from tracked competitor stores."}
@@ -128,8 +133,8 @@ export function DashboardClient() {
             />
           </section>
 
-          <section className="border border-slate-200 bg-white">
-            <SectionHead title="What changed" />
+          <section className="border border-slate-200 bg-white" aria-labelledby="changed-heading">
+            <SectionHead title="What changed" titleId="changed-heading" />
             <FindingList
               findings={data.findings.filter(
                 (item) =>
@@ -141,8 +146,8 @@ export function DashboardClient() {
             />
           </section>
 
-          <section className="border border-slate-200 bg-white">
-            <SectionHead title="What customers are saying" />
+          <section className="border border-slate-200 bg-white" aria-labelledby="customers-heading">
+            <SectionHead title="What customers are saying" titleId="customers-heading" />
             <FindingList
               findings={data.findings.filter(
                 (item) =>
@@ -154,18 +159,19 @@ export function DashboardClient() {
             />
           </section>
 
-          <section className="border border-slate-200 bg-white">
-            <SectionHead title="Market gaps" />
+          <section className="border border-slate-200 bg-white" aria-labelledby="gaps-heading">
+            <SectionHead title="Market gaps" titleId="gaps-heading" />
             <div className="px-4 py-4">
               <MarketPanel market={data.market} />
             </div>
           </section>
 
-          <section className="border border-slate-200 bg-white">
+          <section className="border border-slate-200 bg-white" aria-labelledby="competitors-heading">
             <SectionHead
               title="Competitors"
+              titleId="competitors-heading"
               action={
-                <Link href="/competitors" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                <Link href="/competitors" className="text-sm font-medium text-stone-700 hover:text-slate-900">
                   View all
                 </Link>
               }
@@ -181,7 +187,8 @@ export function DashboardClient() {
               </div>
             ) : (
               <div className="table-wrap">
-                <table className="min-w-[640px]">
+                <table className="min-w-[640px]" aria-label="Tracked competitors">
+                  <caption className="sr-only">Tracked competitor stores</caption>
                   <thead>
                     <tr>
                       <th>Competitor</th>
@@ -204,6 +211,7 @@ export function DashboardClient() {
                         <td>
                           <a className="table-link" href={competitor.url} target="_blank" rel="noreferrer">
                             {hostname(competitor.url)}
+                            <span className="sr-only"> (opens in a new tab)</span>
                           </a>
                         </td>
                         <td>
@@ -259,8 +267,9 @@ function SectionHead({
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Loading dashboard">
-      <div className="h-48 border border-slate-200 bg-white" />
+    <div className="space-y-4" aria-busy="true" role="status">
+      <p className="sr-only">Loading dashboard</p>
+      <div className="h-48 border border-slate-200 bg-white" aria-hidden="true" />
     </div>
   );
 }

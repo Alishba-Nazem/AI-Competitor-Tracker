@@ -88,11 +88,11 @@ export default function SettingsPage() {
           {account ? (
             <dl className="space-y-2 text-sm text-slate-600">
               <div>
-                <dt className="text-slate-400">Name</dt>
+                <dt className="text-stone-700">Name</dt>
                 <dd className="font-medium text-slate-800">{account.name}</dd>
               </div>
               <div>
-                <dt className="text-slate-400">Email</dt>
+                <dt className="text-stone-700">Email</dt>
                 <dd>{account.email}</dd>
               </div>
             </dl>
@@ -114,20 +114,20 @@ export default function SettingsPage() {
           {profile ? (
             <dl className="space-y-2 text-sm text-slate-600">
               <div>
-                <dt className="text-slate-400">Business</dt>
+                <dt className="text-stone-700">Business</dt>
                 <dd className="font-medium text-slate-800">{profile.businessName}</dd>
               </div>
               <div>
-                <dt className="text-slate-400">Category</dt>
+                <dt className="text-stone-700">Category</dt>
                 <dd>{profile.category}</dd>
               </div>
               <div>
-                <dt className="text-slate-400">Market</dt>
+                <dt className="text-stone-700">Market</dt>
                 <dd>{profile.country}</dd>
               </div>
               {profile.storeUrl ? (
                 <div>
-                  <dt className="text-slate-400">Store</dt>
+                  <dt className="text-stone-700">Store</dt>
                   <dd className="break-all">{profile.storeUrl}</dd>
                 </div>
               ) : null}
@@ -167,7 +167,7 @@ export default function SettingsPage() {
                   >
                     <div className="min-w-0">
                       <p className="font-medium text-slate-900">{competitor.name}</p>
-                      <p className="truncate text-xs text-slate-500">{competitor.url}</p>
+                      <p className="truncate text-xs text-stone-600">{competitor.url}</p>
                     </div>
                     <div className="flex gap-2">
                       <button

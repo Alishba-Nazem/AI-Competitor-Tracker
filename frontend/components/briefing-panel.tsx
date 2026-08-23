@@ -12,7 +12,7 @@ export function BriefingPanel({
   if (loading) {
     return (
       <div
-        className="px-4 py-6 text-sm text-slate-500"
+        className="px-4 py-6 text-sm text-stone-600"
         aria-busy="true"
         aria-live="polite"
       >
@@ -31,7 +31,7 @@ export function BriefingPanel({
 
   if (!briefing || !briefing.available) {
     return (
-      <p className="px-4 py-6 text-sm text-slate-500" role="status">
+      <p className="px-4 py-6 text-sm text-stone-600" role="status">
         {briefing?.message ||
           "Capture competitor prices and reviews first. The briefing only uses stored data."}
       </p>
@@ -42,7 +42,7 @@ export function BriefingPanel({
     <div className="space-y-4 px-4 py-4" aria-live="polite">
       <div className="flex flex-wrap items-center gap-2">
         <span
-          className={`inline-block px-1.5 py-0.5 text-[11px] font-semibold ${
+          className={`inline-block px-1.5 py-0.5 text-xs font-semibold ${
             briefing.source === "fallback"
               ? "bg-slate-100 text-slate-700"
               : "bg-teal-50 text-teal-800"
@@ -55,7 +55,7 @@ export function BriefingPanel({
               : "Captured-data briefing"}
         </span>
         {briefing.message ? (
-          <span className="text-xs text-slate-500">{briefing.message}</span>
+          <span className="text-xs text-stone-600">{briefing.message}</span>
         ) : null}
       </div>
       <p className="text-sm font-semibold leading-6 text-slate-900">{briefing.headline}</p>
@@ -68,7 +68,7 @@ export function BriefingPanel({
       ) : null}
       {briefing.risks.length > 0 ? (
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-700">
             Risks
           </h3>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">
@@ -80,7 +80,7 @@ export function BriefingPanel({
       ) : null}
       {briefing.nextActions.length > 0 ? (
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-700">
             Next actions
           </h3>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">

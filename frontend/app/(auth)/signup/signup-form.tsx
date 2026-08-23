@@ -1,14 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { AuthScreen } from "@/components/auth-screen";
-import { Field } from "@/components/ui";
+import { Field } from "@/components/field";
 import { api } from "@/lib/api";
 import { setAuthSession } from "@/lib/auth";
 
-export default function SignupPage() {
+export function SignupForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -40,22 +38,7 @@ export default function SignupPage() {
   }
 
   return (
-    <AuthScreen
-      title="Create your workspace"
-      subtitle="Start tracking competitor stores. After signup you’ll set up your market and first rivals."
-      submitLabel="Create account"
-      submitting={submitting}
-      error={error}
-      onSubmit={onSubmit}
-      footer={
-        <>
-          Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-teal-700 hover:underline">
-            Sign in
-          </Link>
-        </>
-      }
-    >
+    <form className="mt-8 space-y-4" onSubmit={onSubmit} aria-describedby={error ? "auth-error" : undefined}>
       <Field label="Full name">
         <input
           type="text"
@@ -87,6 +70,23 @@ export default function SignupPage() {
           minLength={8}
         />
       </Field>
-    </AuthScreen>
+      {error ? (
+        <p
+          id="auth-error"
+          className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+      <button
+        type="submit"
+        className="button-primary w-full justify-center"
+        disabled={submitting}
+        aria-busy={submitting}
+      >
+        {submitting ? "Please wait…" : "Create account"}
+      </button>
+    </form>
   );
 }

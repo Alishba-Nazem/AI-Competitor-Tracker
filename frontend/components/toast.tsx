@@ -53,14 +53,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 ? "bg-emerald-50 text-emerald-900 ring-emerald-100"
                 : "bg-rose-50 text-rose-900 ring-rose-100"
             }`}
-            role="status"
+            role={toast.tone === "error" ? "alert" : "status"}
           >
             <span>{toast.message}</span>
             <button
               type="button"
-              className="shrink-0 text-lg leading-none opacity-60 hover:opacity-100"
+              className="shrink-0 text-lg leading-none text-stone-700 hover:text-stone-950"
               onClick={() => dismiss(toast.id)}
-              aria-label="Dismiss"
+              aria-label="Dismiss notification"
             >
               ×
             </button>

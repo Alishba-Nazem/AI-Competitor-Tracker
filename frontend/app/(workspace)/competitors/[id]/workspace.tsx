@@ -64,7 +64,7 @@ function productPriceTrend(
   if (recentPrices[0] < recentPrices[1]) {
     return { symbol: "↓", label: "price decreased", className: "text-emerald-700" };
   }
-  return { symbol: "→", label: "stable", className: "text-slate-500" };
+  return { symbol: "→", label: "stable", className: "text-stone-600" };
 }
 
 export default function CompetitorWorkspacePage() {
@@ -329,7 +329,7 @@ export default function CompetitorWorkspacePage() {
             >
               {hostname(competitor.url)} ↗
             </a>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-stone-600">
               {products.length} product{products.length === 1 ? "" : "s"} · Last synced{" "}
               {relativeTime(competitor.lastCapturedAt ?? latestSnapshot?.createdAt)}
               {competitor.nextCaptureAt ? ` · Next sync ${relativeFuture(competitor.nextCaptureAt)}` : ""}
@@ -411,7 +411,7 @@ export default function CompetitorWorkspacePage() {
               <Metric label="Captured prices" value={intelligence?.summary.capturedProductCount ?? 0} />
               <Metric label="Reviews" value={intelligence?.summary.reviewCount ?? 0} />
               <div className="border border-slate-200 px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Avg. price</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-stone-600">Avg. price</p>
                 <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                   {intelligence?.summary.averagePrice != null
                     ? formatPrice(intelligence.summary.averagePrice, intelligence.summary.currency)
@@ -468,7 +468,7 @@ export default function CompetitorWorkspacePage() {
                       </a>
                       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-600">
                         <span>
-                          <span className="text-slate-400">Price · </span>
+                          <span className="text-stone-700">Price · </span>
                           {pending ? (
                             "Awaiting capture"
                           ) : (
@@ -483,19 +483,19 @@ export default function CompetitorWorkspacePage() {
                           )}
                         </span>
                         <span>
-                          <span className="text-slate-400">Currency · </span>
+                          <span className="text-stone-700">Currency · </span>
                           {pending ? "—" : product.currency}
                         </span>
                         <span>
-                          <span className="text-slate-400">Availability · </span>
+                          <span className="text-stone-700">Availability · </span>
                           <AvailabilityBadge value={pending ? null : product.availability} />
                         </span>
                         <span>
-                          <span className="text-slate-400">Rating · </span>
+                          <span className="text-stone-700">Rating · </span>
                           {review?.averageRating != null ? `${review.averageRating.toFixed(1)} / 5` : "—"}
                         </span>
                         <span>
-                          <span className="text-slate-400">Reviews · </span>
+                          <span className="text-stone-700">Reviews · </span>
                           {review?.available === false
                             ? "Unavailable"
                             : review
@@ -503,7 +503,7 @@ export default function CompetitorWorkspacePage() {
                               : "—"}
                         </span>
                         <span>
-                          <span className="text-slate-400">Sentiment · </span>
+                          <span className="text-stone-700">Sentiment · </span>
                           {review?.available === false
                             ? "Reviews aren't publicly available"
                             : review && review.totalReviews === 0
@@ -513,7 +513,7 @@ export default function CompetitorWorkspacePage() {
                                 : "—"}
                         </span>
                         <span>
-                          <span className="text-slate-400">Last checked · </span>
+                          <span className="text-stone-700">Last checked · </span>
                           {dateTimeLabel(lastChecked)}
                         </span>
                       </div>
@@ -689,7 +689,7 @@ export default function CompetitorWorkspacePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">No repeated complaint pattern is strong enough to call a gap yet.</p>
+                <p className="text-sm text-stone-600">No repeated complaint pattern is strong enough to call a gap yet.</p>
               )}
             </div>
           )}
@@ -763,17 +763,17 @@ function ReviewsPanel({
         ) : selected ? (
           <div className="grid gap-6 lg:grid-cols-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Average rating</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-stone-700">Average rating</p>
               <p className="mt-1 text-2xl font-semibold">
                 {selected.averageRating != null ? `${selected.averageRating.toFixed(1)} / 5` : "—"}
               </p>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total reviews</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-stone-700">Total reviews</p>
               <p className="mt-1 text-2xl font-semibold">{selected.totalReviews}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Rating distribution</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-stone-700">Rating distribution</p>
               <div className="mt-2 space-y-1 text-sm text-slate-600">
                 {[5, 4, 3, 2, 1].map((star) => (
                   <div key={star} className="flex justify-between gap-4">
@@ -831,7 +831,7 @@ function ThemeList({ title, items }: { title: string; items: Array<{ theme: stri
 function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div className="border border-slate-200 px-3 py-2">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-stone-600">{label}</p>
       <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{value}</p>
     </div>
   );
