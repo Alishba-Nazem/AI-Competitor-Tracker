@@ -159,6 +159,21 @@ a:focus-visible {
   color: #0f172a;
 }
 
+/* Sidebar reuses the login artwork so the workspace isn't wall-to-wall white. */
+.sidebar {
+  background-color: #020617;
+  background-image: radial-gradient(
+      circle at 20% 12%,
+      rgba(45, 122, 168, 0.3),
+      transparent 45%
+    ),
+    radial-gradient(circle at 85% 88%, rgba(15, 118, 110, 0.24), transparent 42%);
+}
+
+.sidebar-heading {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+}
+
 .nav-link {
   display: flex;
   width: 100%;
@@ -166,20 +181,40 @@ a:focus-visible {
   gap: 0.55rem;
   border-radius: 0.375rem;
   padding: 0.5rem 0.65rem;
-  color: #44403c;
+  color: #cbd5e1;
   font-size: 0.8125rem;
   font-weight: 500;
   text-decoration: none;
 }
 
 .nav-link:hover {
-  background: #f5f5f4;
-  color: #1c1917;
+  background: rgba(148, 163, 184, 0.16);
+  color: #ffffff;
 }
 
 .nav-link-active {
-  background: #eef3f8;
-  color: #163e62;
+  background: #1d4f7c;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.nav-link-active:hover {
+  background: #23608f;
+}
+
+.sidebar a:focus-visible,
+.sidebar button:focus-visible {
+  outline: 2px solid #7dd3fc;
+  outline-offset: 2px;
+}
+
+.sidebar .button-ghost {
+  color: #e2e8f0;
+}
+
+.sidebar .button-ghost:hover {
+  background: rgba(148, 163, 184, 0.18);
+  color: #ffffff;
 }
 
 .table-wrap {

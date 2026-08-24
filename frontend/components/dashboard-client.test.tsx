@@ -56,16 +56,26 @@ describe("DashboardClient", () => {
       },
       findings: [],
       market: {
-        enoughData: false,
-        reviewCount: 0,
+        enoughData: true,
+        reviewCount: 40,
         competitorCount: 1,
         capturedProductCount: 8,
-        likes: [],
-        complaints: [],
-        repeatedNeeds: [],
+        sentiment: {
+          rated: 20,
+          unrated: 20,
+          positive: 12,
+          neutral: 3,
+          negative: 5,
+          positivePercent: 60,
+          negativePercent: 25,
+          averageRating: 3.8,
+          ratingDistribution: { "1": 2, "2": 3, "3": 3, "4": 5, "5": 7 },
+        },
+        likes: [{ theme: "design", count: 9 }],
+        complaints: [{ theme: "straps", count: 5 }],
+        repeatedNeeds: [{ theme: "quality", count: 11 }],
         opportunities: [],
         priceBand: null,
-        message: "Capture public reviews first.",
       },
     });
     vi.mocked(api.getCompetitors).mockResolvedValue([
@@ -99,6 +109,62 @@ describe("DashboardClient", () => {
     expect(screen.getByRole("table", { name: "Tracked competitors" })).toBeInTheDocument();
     expect(await screen.findByText("Gemini briefing")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ayan mall" })).toHaveAttribute("href", "/competitors/10");
+  });
+
+  it("charts stored review ratings as like and dislike shares", async () => {
+    vi.mocked(api.getIntelligenceDashboard).mockResolvedValue({
+      profile: null,
+      summary: {
+        competitorCount: 1,
+        productCount: 12,
+        capturedProductCount: 8,
+        reviewCount: 40,
+        findingCount: 0,
+      },
+      findings: [],
+      market: {
+        enoughData: true,
+        reviewCount: 40,
+        competitorCount: 1,
+        capturedProductCount: 8,
+        sentiment: {
+          rated: 20,
+          unrated: 20,
+          positive: 12,
+          neutral: 3,
+          negative: 5,
+          positivePercent: 60,
+          negativePercent: 25,
+          averageRating: 3.8,
+          ratingDistribution: { "1": 2, "2": 3, "3": 3, "4": 5, "5": 7 },
+        },
+        likes: [{ theme: "design", count: 9 }],
+        complaints: [{ theme: "straps", count: 5 }],
+        repeatedNeeds: [{ theme: "quality", count: 11 }],
+        opportunities: [],
+        priceBand: null,
+      },
+    } as never);
+    vi.mocked(api.getCompetitors).mockResolvedValue([] as never);
+    vi.mocked(api.getDashboardSummary).mockResolvedValue(null as never);
+    vi.mocked(api.getIntelligenceBriefing).mockResolvedValue({
+      source: "fallback",
+      available: false,
+      headline: "",
+      bullets: [],
+      risks: [],
+      nextActions: [],
+    } as never);
+
+    render(<DashboardClient />);
+
+    expect(
+      await screen.findByRole("heading", { name: "How customers rate competitors" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Liked/)).toBeInTheDocument();
+    expect(screen.getByText("12 (60%)")).toBeInTheDocument();
+    expect(screen.getByText("5 (25%)")).toBeInTheDocument();
+    expect(screen.getByText(/20 rated reviews/)).toBeInTheDocument();
   });
 
   it("surfaces a dashboard load error without inventing competitor data", async () => {

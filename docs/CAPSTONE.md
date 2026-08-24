@@ -24,12 +24,16 @@ cd backend && npm test
 cd frontend && npm test
 ```
 
-| Suite | Result (23 Aug 2026) |
+| Suite | Result (24 Aug 2026) |
 | --- | --- |
-| Backend Jest | 29 suites, **133 passed** |
-| Frontend Vitest | 6 files, **12 passed** |
+| Backend Jest | 29 suites, **137 passed** |
+| Frontend Vitest | 7 files, **19 passed** |
 
-Backend covers scrape helpers, onboarding isolation, briefing parse/fallback, and scheduler failure handling. Frontend covers `FindingList`, `AuthScreen`, `LoginForm`, `Field` labels, dashboard loading/error, and `BriefingPanel` (loading / error / Claude / empty).
+Backend covers scrape helpers, onboarding isolation, briefing parse/fallback, review sentiment counting, and scheduler failure handling. Frontend covers `FindingList`, `AuthScreen`, `LoginForm`, `Field` labels, dashboard loading/error, review sentiment charts, and `BriefingPanel` (loading / error / Claude / empty).
+
+## 4b. Reporting visuals
+
+The Research dashboard and every competitor workspace chart their stored review ratings instead of listing raw numbers: a like/mixed/dislike donut, a 1–5★ spread, ranked praise and complaint bars, and a captured price range with its median marker. Charts are hand-written SVG and CSS with no charting dependency, so the performance budget above still holds, and every plotted value is also rendered as text for screen readers. Reviews without a stored rating are reported separately and are never counted as a like or a dislike.
 
 ## 5. Performance and accessibility
 

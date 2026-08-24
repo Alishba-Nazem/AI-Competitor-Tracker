@@ -4,6 +4,7 @@ import type {
   MarketAnalysis,
   MarketOpportunity,
   PriceBand,
+  ReviewSentiment,
 } from './intelligence.types';
 
 const MIN_MARKET_REVIEWS = 8;
@@ -41,6 +42,43 @@ export function formatPriceBand(band: PriceBand) {
   return `${formatMoney(band.min, band.currency)}–${formatMoney(band.max, band.currency)}`;
 }
 
+export function sentimentFromReviews(reviews: StoredReview[]): ReviewSentiment {
+  const ratingDistribution = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+  let rated = 0;
+  let ratingTotal = 0;
+  let positive = 0;
+  let neutral = 0;
+  let negative = 0;
+
+  for (const review of reviews) {
+    const rating = Number(review.rating);
+    if (!Number.isFinite(rating) || rating <= 0) continue;
+
+    rated += 1;
+    ratingTotal += rating;
+    const bucket = String(
+      Math.min(5, Math.max(1, Math.round(rating))),
+    ) as keyof typeof ratingDistribution;
+    ratingDistribution[bucket] += 1;
+
+    if (rating >= 4) positive += 1;
+    else if (rating <= 2) negative += 1;
+    else neutral += 1;
+  }
+
+  return {
+    rated,
+    unrated: reviews.length - rated,
+    positive,
+    neutral,
+    negative,
+    positivePercent: rated ? Number(((positive / rated) * 100).toFixed(1)) : null,
+    negativePercent: rated ? Number(((negative / rated) * 100).toFixed(1)) : null,
+    averageRating: rated ? Number((ratingTotal / rated).toFixed(2)) : null,
+    ratingDistribution,
+  };
+}
+
 export function buildMarketAnalysis(input: {
   category?: string | null;
   reviews: StoredReview[];
@@ -50,6 +88,7 @@ export function buildMarketAnalysis(input: {
 }): MarketAnalysis {
   const reviewCount = input.reviews.length;
   const priceBand = priceBandFromPrices(input.prices, input.currency);
+  const sentiment = sentimentFromReviews(input.reviews);
   const insights = analyzeReviews(0, input.reviews);
   const likes = insights.likes.slice(0, 5);
   const complaints = insights.dislikes.slice(0, 5);
@@ -66,6 +105,7 @@ export function buildMarketAnalysis(input: {
       competitorCount: input.competitorCount,
       capturedProductCount: input.prices.length,
       priceBand,
+      sentiment,
       likes,
       complaints,
       repeatedNeeds,
@@ -79,6 +119,7 @@ export function buildMarketAnalysis(input: {
     competitorCount: input.competitorCount,
     capturedProductCount: input.prices.length,
     priceBand,
+    sentiment,
     likes,
     complaints,
     repeatedNeeds,

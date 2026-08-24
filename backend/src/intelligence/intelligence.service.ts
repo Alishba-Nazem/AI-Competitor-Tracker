@@ -230,6 +230,7 @@ export class IntelligenceService {
         currency,
       },
       findings,
+      sentiment: market.sentiment,
       likes: insights.likes,
       dislikes: insights.dislikes,
       repeatedNeeds: insights.themes,

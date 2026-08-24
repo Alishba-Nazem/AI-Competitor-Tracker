@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { BriefingPanel } from "@/components/briefing-panel";
-import { FindingList, MarketPanel } from "@/components/intelligence";
+import { FindingList, MarketPanel, SentimentPanel } from "@/components/intelligence";
 import { useToast } from "@/components/toast";
 import { EmptyState, StatCard, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -144,6 +144,22 @@ export function DashboardClient() {
               )}
               emptyText="No price or product changes yet. Capture prices at least twice in a competitor workspace."
             />
+          </section>
+
+          <section className="border border-slate-200 bg-white" aria-labelledby="sentiment-heading">
+            <SectionHead
+              title="How customers rate competitors"
+              titleId="sentiment-heading"
+              action={
+                <span className="text-xs text-stone-600">
+                  From {data.market.reviewCount} stored review
+                  {data.market.reviewCount === 1 ? "" : "s"}
+                </span>
+              }
+            />
+            <div className="px-4 py-4">
+              <SentimentPanel market={data.market} />
+            </div>
           </section>
 
           <section className="border border-slate-200 bg-white" aria-labelledby="customers-heading">

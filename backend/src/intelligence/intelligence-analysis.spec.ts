@@ -3,6 +3,7 @@ import {
   buildMarketAnalysis,
   buildOpportunities,
   priceBandFromPrices,
+  sentimentFromReviews,
 } from './intelligence-analysis';
 
 describe('intelligence analysis', () => {
@@ -14,6 +15,52 @@ describe('intelligence analysis', () => {
       currency: 'PKR',
       sampleSize: 3,
     });
+  });
+
+  it('splits stored ratings into positive, neutral, and negative counts', () => {
+    const sentiment = sentimentFromReviews([
+      { text: 'Great', rating: 5 },
+      { text: 'Good', rating: 4 },
+      { text: 'Okay', rating: 3 },
+      { text: 'Bad strap', rating: 2 },
+      { text: 'Broke', rating: 1 },
+    ]);
+
+    expect(sentiment.rated).toBe(5);
+    expect(sentiment.positive).toBe(2);
+    expect(sentiment.neutral).toBe(1);
+    expect(sentiment.negative).toBe(2);
+    expect(sentiment.positivePercent).toBe(40);
+    expect(sentiment.negativePercent).toBe(40);
+    expect(sentiment.averageRating).toBe(3);
+    expect(sentiment.ratingDistribution).toEqual({
+      '1': 1,
+      '2': 1,
+      '3': 1,
+      '4': 1,
+      '5': 1,
+    });
+  });
+
+  it('never counts unrated reviews as positive or negative', () => {
+    const sentiment = sentimentFromReviews([
+      { text: 'No rating given' },
+      { text: 'Also unrated', rating: null },
+      { text: 'Loved it', rating: 5 },
+    ]);
+
+    expect(sentiment.rated).toBe(1);
+    expect(sentiment.unrated).toBe(2);
+    expect(sentiment.positive).toBe(1);
+    expect(sentiment.positivePercent).toBe(100);
+  });
+
+  it('reports empty sentiment when nothing is rated', () => {
+    const sentiment = sentimentFromReviews([]);
+
+    expect(sentiment.rated).toBe(0);
+    expect(sentiment.positivePercent).toBeNull();
+    expect(sentiment.averageRating).toBeNull();
   });
 
   it('does not invent a market gap without enough reviews', () => {

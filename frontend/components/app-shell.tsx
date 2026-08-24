@@ -104,13 +104,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const nav = (
     <>
-      <div className="flex h-14 items-center gap-2.5 border-b border-slate-200 px-4">
-        <div className="grid h-8 w-8 place-items-center rounded bg-slate-900 text-[11px] font-semibold tracking-wide text-white">
+      <div className="sidebar-heading flex h-14 items-center gap-2.5 px-4">
+        <div className="grid h-8 w-8 place-items-center rounded bg-white text-[11px] font-semibold tracking-wide text-slate-950">
           ECT
         </div>
         <div className="min-w-0">
-          <div className="truncate text-[13px] font-semibold text-slate-900">Ecommerce Competitor Tracker</div>
-          <div className="text-xs text-stone-600">Market tracking</div>
+          <div className="truncate text-[13px] font-semibold text-white">Ecommerce Competitor Tracker</div>
+          <div className="text-xs text-slate-300">Market tracking</div>
         </div>
       </div>
       <nav className="flex flex-1 flex-col justify-between px-2 py-3" aria-label="Primary">
@@ -145,14 +145,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-slate-200 bg-white lg:flex">
+      <aside className="sidebar fixed inset-y-0 left-0 z-40 hidden w-56 flex-col lg:flex">
         {nav}
       </aside>
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/25 lg:hidden" onClick={() => setMobileOpen(false)}>
+        <div className="fixed inset-0 z-50 bg-slate-950/50 lg:hidden" onClick={() => setMobileOpen(false)}>
           <aside
             id="mobile-nav"
-            className="flex h-full w-64 flex-col border-r border-slate-200 bg-white"
+            className="sidebar flex h-full w-64 flex-col"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -173,10 +173,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
       <div className="lg:pl-56">
-        <header className="sticky top-0 z-30 flex h-12 items-center border-b border-slate-200 bg-[var(--background)] px-4 lg:hidden">
+        <header className="sidebar sticky top-0 z-30 flex h-12 items-center px-4 lg:hidden">
           <button
             type="button"
-            className="grid h-9 w-9 place-items-center rounded text-stone-700 hover:bg-white"
+            className="grid h-9 w-9 place-items-center rounded text-slate-200 hover:bg-white/10"
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
             aria-expanded={mobileOpen}
@@ -186,7 +186,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
           </button>
-          <p className="ml-2 text-sm font-semibold text-slate-800">Ecommerce Competitor Tracker</p>
+          <p className="ml-2 text-sm font-semibold text-white">Ecommerce Competitor Tracker</p>
         </header>
         <main id="main-content" className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
           <AuthGate>

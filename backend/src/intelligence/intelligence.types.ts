@@ -34,6 +34,19 @@ export type PriceBand = {
   sampleSize: number;
 };
 
+/** Counts come from stored review ratings only. Unrated reviews are never guessed. */
+export type ReviewSentiment = {
+  rated: number;
+  unrated: number;
+  positive: number;
+  neutral: number;
+  negative: number;
+  positivePercent: number | null;
+  negativePercent: number | null;
+  averageRating: number | null;
+  ratingDistribution: Record<'1' | '2' | '3' | '4' | '5', number>;
+};
+
 export type MarketAnalysis = {
   enoughData: boolean;
   message?: string;
@@ -41,6 +54,7 @@ export type MarketAnalysis = {
   competitorCount: number;
   capturedProductCount: number;
   priceBand: PriceBand | null;
+  sentiment: ReviewSentiment;
   likes: ReviewTheme[];
   complaints: ReviewTheme[];
   repeatedNeeds: ReviewTheme[];

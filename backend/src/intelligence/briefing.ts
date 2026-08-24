@@ -18,6 +18,13 @@ export type BriefingFacts = {
   } | null;
   likes: Array<{ theme: string; count: number }>;
   complaints: Array<{ theme: string; count: number }>;
+  sentiment?: {
+    rated: number;
+    positive: number;
+    neutral: number;
+    negative: number;
+    averageRating: number | null;
+  } | null;
 };
 
 export type IntelligenceBriefing = {
@@ -76,6 +83,13 @@ export function factsFromDashboard(dashboard: {
       theme: item.theme,
       count: item.count,
     })),
+    sentiment: {
+      rated: dashboard.market.sentiment.rated,
+      positive: dashboard.market.sentiment.positive,
+      neutral: dashboard.market.sentiment.neutral,
+      negative: dashboard.market.sentiment.negative,
+      averageRating: dashboard.market.sentiment.averageRating,
+    },
   };
 }
 
@@ -88,6 +102,9 @@ export function buildBriefingUserPrompt(facts: BriefingFacts) {
     `Discovered products: ${facts.productCount}`,
     `Captured prices: ${facts.capturedProductCount}`,
     `Stored reviews: ${facts.reviewCount}`,
+    facts.sentiment && facts.sentiment.rated > 0
+      ? `Rated reviews: ${facts.sentiment.rated} (positive 4-5★ ${facts.sentiment.positive}, neutral 3★ ${facts.sentiment.neutral}, negative 1-2★ ${facts.sentiment.negative}, average ${facts.sentiment.averageRating ?? 'unknown'})`
+      : 'Rated reviews: none captured yet',
     facts.priceBand
       ? `Observed price band (${facts.priceBand.currency}): min ${facts.priceBand.min}, median ${facts.priceBand.median}, max ${facts.priceBand.max} from ${facts.priceBand.sampleSize} products`
       : 'Observed price band: none captured yet',

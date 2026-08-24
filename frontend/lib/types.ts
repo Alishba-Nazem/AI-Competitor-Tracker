@@ -276,6 +276,18 @@ export type PriceBand = {
   sampleSize: number;
 };
 
+export type ReviewSentiment = {
+  rated: number;
+  unrated: number;
+  positive: number;
+  neutral: number;
+  negative: number;
+  positivePercent: number | null;
+  negativePercent: number | null;
+  averageRating: number | null;
+  ratingDistribution: Record<string, number>;
+};
+
 export type MarketAnalysis = {
   enoughData: boolean;
   message?: string;
@@ -283,6 +295,7 @@ export type MarketAnalysis = {
   competitorCount: number;
   capturedProductCount: number;
   priceBand: PriceBand | null;
+  sentiment: ReviewSentiment;
   likes: ReviewTheme[];
   complaints: ReviewTheme[];
   repeatedNeeds: ReviewTheme[];
@@ -322,6 +335,7 @@ export type CompetitorIntelligence = {
     currency: string;
   };
   findings: IntelligenceFinding[];
+  sentiment: ReviewSentiment;
   likes: ReviewTheme[];
   dislikes: ReviewTheme[];
   repeatedNeeds: ReviewTheme[];

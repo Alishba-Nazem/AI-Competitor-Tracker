@@ -58,38 +58,65 @@ export function BriefingPanel({
           <span className="text-xs text-stone-600">{briefing.message}</span>
         ) : null}
       </div>
-      <p className="text-sm font-semibold leading-6 text-slate-900">{briefing.headline}</p>
+      <p className="border-l-4 border-[#1d4f7c] bg-slate-50 py-3 pl-3 pr-2 text-base font-semibold leading-6 text-slate-900">
+        {briefing.headline}
+      </p>
       {briefing.bullets.length > 0 ? (
-        <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">
+        <ul className="space-y-2">
           {briefing.bullets.map((item) => (
-            <li key={item}>{item}</li>
+            <li key={item} className="flex gap-2.5 text-sm leading-6 text-slate-700">
+              <span
+                className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1d4f7c]"
+                aria-hidden="true"
+              />
+              {item}
+            </li>
           ))}
         </ul>
       ) : null}
-      {briefing.risks.length > 0 ? (
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-700">
-            Risks
-          </h3>
-          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">
-            {briefing.risks.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+      {briefing.risks.length > 0 || briefing.nextActions.length > 0 ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          <BriefingCard
+            title="Risks"
+            items={briefing.risks}
+            className="border-rose-200 bg-rose-50"
+            titleClass="text-rose-800"
+          />
+          <BriefingCard
+            title="Next actions"
+            items={briefing.nextActions}
+            className="border-emerald-200 bg-emerald-50"
+            titleClass="text-emerald-800"
+          />
         </div>
       ) : null}
-      {briefing.nextActions.length > 0 ? (
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-700">
-            Next actions
-          </h3>
-          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">
-            {briefing.nextActions.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+    </div>
+  );
+}
+
+function BriefingCard({
+  title,
+  items,
+  className,
+  titleClass,
+}: {
+  title: string;
+  items: string[];
+  className: string;
+  titleClass: string;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className={`border p-3 ${className}`}>
+      <h3 className={`text-xs font-semibold uppercase tracking-[0.14em] ${titleClass}`}>
+        {title}
+      </h3>
+      <ul className="mt-2 space-y-1.5 text-sm leading-6 text-slate-800">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
     </div>
   );
 }

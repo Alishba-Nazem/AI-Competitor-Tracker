@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import type { IntelligenceFinding, IntelligenceFindingKind, MarketAnalysis } from "@/lib/types";
+import { PriceRangeBar, RatingHistogram, SentimentChart, ThemeBars } from "@/components/charts";
 import { EmptyState } from "@/components/ui";
-import { formatPrice } from "@/lib/format";
 
 const LABELS: Record<IntelligenceFindingKind, string> = {
   PRICE_DECREASE: "Price down",
@@ -60,30 +60,28 @@ export function FindingList({
   );
 }
 
-export function ThemeColumn({
-  title,
-  items,
-  empty,
-}: {
-  title: string;
-  items: Array<{ theme: string; count: number }>;
-  empty: string;
-}) {
+/** Visual read of stored review ratings: how many customers liked or disliked what competitors sell. */
+export function SentimentPanel({ market }: { market: MarketAnalysis }) {
   return (
-    <div>
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-      {items.length === 0 ? (
-        <p className="mt-2 text-sm text-stone-600">{empty}</p>
-      ) : (
-        <ul className="mt-2 space-y-1 text-sm text-slate-600">
-          {items.map((item) => (
-            <li key={item.theme} className="flex justify-between gap-4">
-              <span className="capitalize">{item.theme}</span>
-              <span className="tabular-nums text-stone-700">{item.count}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="space-y-6">
+      <SentimentChart sentiment={market.sentiment} />
+      {market.sentiment.rated > 0 ? (
+        <div className="grid gap-6 border-t border-slate-100 pt-5 md:grid-cols-3">
+          <RatingHistogram distribution={market.sentiment.ratingDistribution} />
+          <ThemeBars
+            title="Praised most"
+            items={market.likes}
+            tone="positive"
+            empty="No repeated praise in high-rated reviews yet."
+          />
+          <ThemeBars
+            title="Complained about most"
+            items={market.complaints}
+            tone="negative"
+            empty="No repeated complaint in low-rated reviews yet."
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -92,14 +90,7 @@ export function MarketPanel({ market }: { market: MarketAnalysis }) {
   return (
     <div className="space-y-4">
       {market.priceBand ? (
-        <p className="text-sm text-slate-600">
-          Captured competitor prices:{" "}
-          <span className="font-semibold text-slate-900">
-            {formatPrice(market.priceBand.min, market.priceBand.currency)} –{" "}
-            {formatPrice(market.priceBand.max, market.priceBand.currency)}
-          </span>{" "}
-          ({market.priceBand.sampleSize} products)
-        </p>
+        <PriceRangeBar band={market.priceBand} />
       ) : (
         <p className="text-sm text-stone-600">No captured selling prices yet. Run Capture in a workspace.</p>
       )}
@@ -110,14 +101,15 @@ export function MarketPanel({ market }: { market: MarketAnalysis }) {
       {!market.enoughData ? (
         <EmptyState title="Not enough review data" text={market.message ?? "Capture public reviews first."} />
       ) : (
-        <>
-          <div className="grid gap-6 md:grid-cols-3">
-            <ThemeColumn title="Customers like" items={market.likes} empty="No positive themes yet." />
-            <ThemeColumn title="Customers complain about" items={market.complaints} empty="No repeated complaints yet." />
-            <ThemeColumn title="Repeated needs" items={market.repeatedNeeds} empty="No repeated themes yet." />
-          </div>
+        <div className="grid gap-6 border-t border-slate-100 pt-4 md:grid-cols-[minmax(0,18rem)_1fr]">
+          <ThemeBars
+            title="Repeated needs"
+            items={market.repeatedNeeds}
+            tone="accent"
+            empty="No repeated themes yet."
+          />
           {market.opportunities.length > 0 ? (
-            <div className="border-t border-slate-100 pt-4">
+            <div className="space-y-3">
               {market.opportunities.map((item) => (
                 <div key={item.title}>
                   <p className="text-sm font-semibold text-slate-900">{item.title}</p>
@@ -130,7 +122,7 @@ export function MarketPanel({ market }: { market: MarketAnalysis }) {
               No repeated complaint pattern is strong enough to call a market gap yet.
             </p>
           )}
-        </>
+        </div>
       )}
     </div>
   );

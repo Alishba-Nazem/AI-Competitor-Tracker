@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { FindingList, ThemeColumn } from "@/components/intelligence";
+import {
+  RatingHistogram,
+  SentimentChart,
+  ThemeBars,
+  sentimentFromDistribution,
+} from "@/components/charts";
+import { FindingList } from "@/components/intelligence";
 import { useToast } from "@/components/toast";
 import {
   AvailabilityBadge,
@@ -43,6 +49,8 @@ import type {
 } from "@/lib/types";
 
 type WorkspaceTab = "overview" | "products" | "changes" | "reviews" | "insights" | "history";
+
+const NO_THEMES = "No recurring themes in stored reviews.";
 
 function productPriceTrend(
   productId: number,
@@ -674,10 +682,26 @@ export default function CompetitorWorkspacePage() {
             />
           ) : (
             <div className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-3">
-                <ThemeColumn title="Customers like" items={intelligence.likes} empty="No positive themes yet." />
-                <ThemeColumn title="Customers dislike" items={intelligence.dislikes} empty="No repeated complaints yet." />
-                <ThemeColumn title="Repeated needs" items={intelligence.repeatedNeeds} empty="No repeated themes yet." />
+              <SentimentChart sentiment={intelligence.sentiment} />
+              <div className="grid gap-6 border-t border-slate-100 pt-5 md:grid-cols-3">
+                <ThemeBars
+                  title="Customers like"
+                  items={intelligence.likes}
+                  tone="positive"
+                  empty="No positive themes yet."
+                />
+                <ThemeBars
+                  title="Customers dislike"
+                  items={intelligence.dislikes}
+                  tone="negative"
+                  empty="No repeated complaints yet."
+                />
+                <ThemeBars
+                  title="Repeated needs"
+                  items={intelligence.repeatedNeeds}
+                  tone="accent"
+                  empty="No repeated themes yet."
+                />
               </div>
               {intelligence.opportunities.length > 0 ? (
                 <div className="border-t border-slate-100 pt-4">
@@ -761,28 +785,9 @@ function ReviewsPanel({
         ) : selected && selected.totalReviews === 0 ? (
           <EmptyState title="No reviews" text="No customer reviews found." />
         ) : selected ? (
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-stone-700">Average rating</p>
-              <p className="mt-1 text-2xl font-semibold">
-                {selected.averageRating != null ? `${selected.averageRating.toFixed(1)} / 5` : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-stone-700">Total reviews</p>
-              <p className="mt-1 text-2xl font-semibold">{selected.totalReviews}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-stone-700">Rating distribution</p>
-              <div className="mt-2 space-y-1 text-sm text-slate-600">
-                {[5, 4, 3, 2, 1].map((star) => (
-                  <div key={star} className="flex justify-between gap-4">
-                    <span>{star} star</span>
-                    <span className="tabular-nums">{distribution[String(star)] ?? 0}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
+            <SentimentChart sentiment={sentimentFromDistribution(distribution, selected.totalReviews)} />
+            <RatingHistogram distribution={distribution} />
           </div>
         ) : null}
       </Panel>
@@ -795,10 +800,10 @@ function ReviewsPanel({
           />
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
-            <ThemeList title="What customers like" items={insights.likes} />
-            <ThemeList title="What customers dislike" items={insights.dislikes} />
-            <ThemeList title="Common themes" items={insights.themes} />
-            <ThemeList title="Important complaints" items={insights.complaints} />
+            <ThemeBars title="What customers like" items={insights.likes} tone="positive" empty={NO_THEMES} />
+            <ThemeBars title="What customers dislike" items={insights.dislikes} tone="negative" empty={NO_THEMES} />
+            <ThemeBars title="Common themes" items={insights.themes} tone="accent" empty={NO_THEMES} />
+            <ThemeBars title="Important complaints" items={insights.complaints} tone="neutral" empty={NO_THEMES} />
           </div>
         )}
       </Panel>
@@ -822,10 +827,6 @@ function ReviewsPanel({
       </Panel>
     </div>
   );
-}
-
-function ThemeList({ title, items }: { title: string; items: Array<{ theme: string; count: number }> }) {
-  return <ThemeColumn title={title} items={items} empty="No recurring themes in stored reviews." />;
 }
 
 function Metric({ label, value }: { label: string; value: number }) {
