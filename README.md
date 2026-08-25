@@ -26,6 +26,7 @@ npm run start:dev             # http://localhost:3000
 # frontend
 cd frontend
 cp .env.example .env.local    # NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+# For streaming chat on /ai-assistant, also set GOOGLE_GENERATIVE_AI_API_KEY in .env.local (server-side, not NEXT_PUBLIC_)
 npm install
 npm run dev                   # http://localhost:3001
 ```
@@ -54,20 +55,19 @@ Each signed-in account is isolated. A new signup always starts with empty onboar
 
 ## AI integration
 
-Claude is **not** a chatbot. `GET /intelligence/briefing` builds a fact pack from that user’s captured prices, snapshot diffs, and stored reviews, then asks Claude for structured JSON:
+There are two Claude/Gemini surfaces, both grounded in stored captures:
 
-- `headline`, `bullets`, `risks`, `nextActions`
-- System prompt: use only supplied facts; never invent prices or products
+1. **Weekly briefing** — `GET /intelligence/briefing` on the Nest API. Builds a fact pack from captured prices, snapshot diffs, and reviews, then asks Gemini (preferred) or Claude for JSON (`headline`, `bullets`, `risks`, `nextActions`). Fallback: rule-based briefing from the same facts. Prompt: `backend/src/intelligence/briefing.ts`.
+2. **Streaming chat** — `POST /api/chat` on the Next.js app. Uses the Vercel AI SDK `streamText` + Gemini. The Research page links to **AI Analyst** (`/ai-assistant`). The route loads `/intelligence/dashboard` with the user’s JWT so answers use real captured facts. `GOOGLE_GENERATIVE_AI_API_KEY` stays on the Next.js server (Vercel / `.env.local`), never `NEXT_PUBLIC_`.
 
-The prompt lives in `backend/src/intelligence/briefing.ts` (`BRIEFING_SYSTEM_PROMPT` + `buildBriefingUserPrompt`). Default model: Gemini `gemini-3.6-flash` when `GEMINI_API_KEY` is set (free AI Studio key). Claude is used only if Gemini is missing and `ANTHROPIC_API_KEY` is set.
-
-**Fallback:** if no LLM key is set, the call fails, or JSON is invalid, the API returns a rule-based briefing from the same captured findings. The dashboard labels the source (`Gemini briefing` / `Claude briefing` / `Captured-data briefing`) and never fills in fake numbers.
+**Fallback:** if no LLM key is set, the briefing still returns captured findings. Chat shows a configuration error until `GOOGLE_GENERATIVE_AI_API_KEY` is set for the frontend.
 
 ## Known limitations
 
 - Unsupported stores may only get JSON-LD prices, or fail discovery
 - Review coverage depends on what the store exposes publicly
 - Gemini briefings need `GEMINI_API_KEY` in Railway; without any LLM key you still get the fallback briefing
+- Streaming chat needs `GOOGLE_GENERATIVE_AI_API_KEY` on the frontend host (Vercel / `.env.local`); a free key from Google AI Studio is enough
 - Existing data created before per-user workspaces may need a fresh onboarding pass
 
 ### Later

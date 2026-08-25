@@ -353,4 +353,5 @@ export type NavKey =
   | "changes"
   | "reviews"
   | "snapshots"
-  | "settings";
+  | "settings"
+  | "assistant";

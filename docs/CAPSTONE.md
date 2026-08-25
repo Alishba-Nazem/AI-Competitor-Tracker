@@ -9,7 +9,7 @@ Ecommerce Competitor Tracker helps small online sellers see what rivals charge, 
 - App: https://ai-competitor-tracker.vercel.app
 - API: https://ai-competitor-tracker-production.up.railway.app
 
-Create an account, finish the 3-step onboarding, capture a competitor, then read **AI briefing** on Research.
+Create an account, finish the 3-step onboarding, capture a competitor, then read **AI briefing** on Research. Open **AI Analyst** to ask follow-up questions; Gemini streams from the same captured facts.
 
 ## 3. Repository
 
@@ -24,12 +24,12 @@ cd backend && npm test
 cd frontend && npm test
 ```
 
-| Suite | Result (24 Aug 2026) |
+| Suite | Result (25 Aug 2026) |
 | --- | --- |
 | Backend Jest | 29 suites, **137 passed** |
-| Frontend Vitest | 7 files, **19 passed** |
+| Frontend Vitest | 11 files, **33 passed** |
 
-Backend covers scrape helpers, onboarding isolation, briefing parse/fallback, review sentiment counting, and scheduler failure handling. Frontend covers `FindingList`, `AuthScreen`, `LoginForm`, `Field` labels, dashboard loading/error, review sentiment charts, and `BriefingPanel` (loading / error / Claude / empty).
+Backend covers scrape helpers, onboarding isolation, briefing parse/fallback, review sentiment counting, and scheduler failure handling. Frontend covers `FindingList`, `AuthScreen`, `LoginForm`, `Field` labels, dashboard loading/error, review sentiment charts, `BriefingPanel`, streaming chat empty/stop/thinking states, and captured-fact prompt packing.
 
 ## 4b. Reporting visuals
 

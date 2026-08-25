@@ -11,11 +11,13 @@ const NAV_ITEMS: Array<{ key: NavKey; href: string; label: string; icon: string 
   { key: "dashboard", href: "/", label: "Research", icon: "overview" },
   { key: "competitors", href: "/competitors", label: "Competitors", icon: "competitors" },
   { key: "changes", href: "/changes", label: "Changes", icon: "changes" },
+  { key: "assistant", href: "/ai-assistant", label: "AI Analyst", icon: "assistant" },
 ];
 
 function activeKey(pathname: string): NavKey {
   if (pathname.startsWith("/competitors")) return "competitors";
   if (pathname.startsWith("/changes")) return "changes";
+  if (pathname.startsWith("/ai-assistant")) return "assistant";
   return "dashboard";
 }
 
@@ -52,6 +54,14 @@ function NavIcon({ name }: { name: string }) {
         <svg {...common}>
           <path d="M3 11.5 6.5 8 8.8 10.2 13 5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M10 5.5h3v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "assistant":
+      return (
+        <svg {...common}>
+          <path d="M3.5 11.5 8 3.5l4.5 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M5.2 8.5h5.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          <path d="M8 12.5v1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
       );
     default:

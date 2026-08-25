@@ -133,6 +133,27 @@ export function DashboardClient() {
             />
           </section>
 
+          <section className="border border-slate-200 bg-white" aria-labelledby="analyst-heading">
+            <SectionHead
+              title="AI Competitor Analyst"
+              titleId="analyst-heading"
+              action={
+                <Link href="/ai-assistant" className="text-sm font-medium text-stone-700 hover:text-slate-900">
+                  Open chat
+                </Link>
+              }
+            />
+            <div className="px-4 py-4">
+              <p className="text-sm leading-6 text-stone-700">
+                Ask follow-up questions about the captured prices, catalog changes, and reviews on this page.
+                Gemini streams an answer from stored facts only.
+              </p>
+              <Link href="/ai-assistant" className="button-primary mt-3">
+                Ask the analyst
+              </Link>
+            </div>
+          </section>
+
           <section className="border border-slate-200 bg-white" aria-labelledby="changed-heading">
             <SectionHead title="What changed" titleId="changed-heading" />
             <FindingList

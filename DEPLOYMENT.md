@@ -44,7 +44,10 @@ Operator: Alishba · Date: 2026-08-23
 
 ```
 NEXT_PUBLIC_API_BASE_URL=https://ai-competitor-tracker-production.up.railway.app
+GOOGLE_GENERATIVE_AI_API_KEY=...
 ```
+
+`GOOGLE_GENERATIVE_AI_API_KEY` is server-only for `POST /api/chat`. Do not prefix it with `NEXT_PUBLIC_`. Railway `GEMINI_API_KEY` is separate (Nest briefings) and is not used by this chat route.
 
 **Railway (backend)**
 
