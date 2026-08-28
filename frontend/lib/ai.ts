@@ -1,4 +1,4 @@
-import type { IntelligenceDashboard } from "@/lib/types";
+import type { Competitor, IntelligenceDashboard } from "@/lib/types";
 
 /**
  * Central Gemini configuration for the streaming competitor-intelligence chat.
@@ -11,7 +11,7 @@ export const GOOGLE_API_KEY_ENV = "GOOGLE_GENERATIVE_AI_API_KEY";
 export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
 export const CHAT_API_PATH = "/api/chat";
 export const MAX_CHAT_MESSAGES = 24;
-export const MAX_CHAT_OUTPUT_TOKENS = 1200;
+export const MAX_CHAT_OUTPUT_TOKENS = 1600;
 export const CHAT_TEMPERATURE = 0.2;
 
 /**
@@ -26,18 +26,22 @@ export const CHAT_TEMPERATURE = 0.2;
  * - Say plainly when the required data has not been captured yet.
  */
 export const CHAT_SYSTEM_PROMPT = `You are the AI Competitor Analyst for Ecommerce Competitor Tracker.
-You help a shop owner understand rival prices, catalog changes, and customer reviews.
+You help a shop owner understand rival prices, catalog changes, and customer reviews from their dashboard.
 
 Rules:
-- Use ONLY the captured facts in this request and the conversation.
+- Use tools whenever the answer depends on current dashboard or database information (competitor names, URLs, product lists, prices, counts, changes, or an overview).
 - Never invent competitors, products, prices, ratings, review counts, or dates.
-- If a number or name is not in the captured facts, say it is not in the stored data.
-- Prefer short, actionable answers a seller can use this week.
-- Explain price changes with the stored amount and direction when those exist.
-- Compare competitors only using captured prices, products, and review themes.
-- Call out important changes (price cuts, new products, repeated complaints).
+- Prefer actual tool results and captured facts over generic explanations.
+- "No changes" is not the same as "no data." If products exist but the latest snapshot comparison found no diffs, say the data exists and no changes were detected.
+- Do not say information is "not recorded" or "no matching competitor data found" when tools returned competitor, product, or price records.
+- If the user asks the competitor name, who they are tracking, or a competitor URL, call getCompetitors and use the stored name and url fields.
+- If the user asks how many competitors/products/changes they have, or wants a dashboard overview, call getDashboardSummary. Use getCompetitors when names or URLs are needed.
+- When the user asks to compare current prices, cheapest/most expensive products, or the product catalog, call queryCompetitorData. Use products and priceSummary even when hasChanges is false.
+- When the user asks whether prices or catalog items changed, call queryCompetitorData. If status is "stable" or hasChanges is false with productCount > 0, say no changes were detected in the latest snapshot comparison.
 - Do not claim you scraped a live page just now; you are reading stored captures.
-- Keep formatting simple: short paragraphs, bullet lists, and bold labels. Avoid nested code fences.`;
+- If a tool says there are no competitors, no products, or the requested records do not exist, say that clearly.
+- Keep answers concise and directly answer the question. Short paragraphs, bullet lists, and bold labels. Avoid nested code fences.
+- Do not contradict a tool card. If products were found, do not also say no matching data was found.`;
 
 export type ChatUiMessage = {
   id?: string;
@@ -89,27 +93,106 @@ export function missingGeminiKeyMessage() {
   return "Gemini is not configured on the server. Add GOOGLE_GENERATIVE_AI_API_KEY to the frontend environment (not NEXT_PUBLIC_) and restart.";
 }
 
-export function publicChatError(error: unknown) {
+export type ChatErrorKind =
+  | "rate_limit"
+  | "server"
+  | "network"
+  | "interrupted"
+  | "auth"
+  | "config"
+  | "stopped"
+  | "generic";
+
+export type ChatErrorView = {
+  kind: ChatErrorKind;
+  title: string;
+  detail: string;
+  retryable: boolean;
+};
+
+export function classifyChatError(error: unknown): ChatErrorView {
   const raw = errorMessageFromUnknown(error);
   const fromJson = jsonErrorMessage(raw);
   const text = fromJson || raw;
+  if (/aborterror|aborted|abort/i.test(text) && !/midstream|interrupted/i.test(text)) {
+    return {
+      kind: "stopped",
+      title: "Generation stopped",
+      detail: "You stopped this reply.",
+      retryable: false,
+    };
+  }
   if (/api key|GOOGLE_GENERATIVE_AI_API_KEY|API_KEY_INVALID|not configured/i.test(text)) {
-    return "Gemini is not configured on the server. Add GOOGLE_GENERATIVE_AI_API_KEY to the frontend environment and restart.";
+    return {
+      kind: "config",
+      title: "Gemini is not configured",
+      detail: "Add GOOGLE_GENERATIVE_AI_API_KEY to the frontend environment and restart.",
+      retryable: false,
+    };
   }
-  if (/quota|rate.?limit|resource.?exhausted|\b429\b/i.test(text)) {
-    return "Gemini is rate-limited right now. Try again in a minute.";
+  if (/HTTP_429|\b429\b|too many requests|quota|rate.?limit|resource.?exhausted/i.test(text)) {
+    return {
+      kind: "rate_limit",
+      title: "Too many requests",
+      detail: "Please wait a moment and try again.",
+      retryable: true,
+    };
   }
-  if (/no longer available|NOT_FOUND|model .* not (found|available)|\b404\b/i.test(text)) {
-    return "This Gemini model is not available for your API key. Use a current free-tier model such as gemini-3.6-flash.";
+  if (/MIDSTREAM_FAILURE|interrupted|could not be completed/i.test(text)) {
+    return {
+      kind: "interrupted",
+      title: "Response interrupted",
+      detail: "The AI response could not be completed.",
+      retryable: true,
+    };
   }
-  if (/aborterror|aborted|abort/i.test(text)) {
-    return "Generation stopped.";
+  if (/HTTP_500|\b50[234]\b|temporarily unavailable|analysis service/i.test(text)) {
+    return {
+      kind: "server",
+      title: "Something went wrong",
+      detail: "The analysis service is temporarily unavailable.",
+      retryable: true,
+    };
+  }
+  if (/NETWORK_FAILURE|failed to fetch|networkerror|connection lost|check your internet/i.test(text)) {
+    return {
+      kind: "network",
+      title: "Connection lost",
+      detail: "Check your internet connection and try again.",
+      retryable: true,
+    };
   }
   if (/sign in/i.test(text)) {
-    return "Sign in to ask about your captured competitor data.";
+    return {
+      kind: "auth",
+      title: "Sign in required",
+      detail: "Sign in to ask about your captured competitor data.",
+      retryable: false,
+    };
   }
-  if (fromJson) return fromJson;
-  return "Gemini could not answer just now. Check your connection and try again.";
+  if (/no longer available|NOT_FOUND|model .* not (found|available)|\b404\b/i.test(text)) {
+    return {
+      kind: "server",
+      title: "Something went wrong",
+      detail: "The analysis service is temporarily unavailable.",
+      retryable: true,
+    };
+  }
+  return {
+    kind: "generic",
+    title: "Something went wrong",
+    detail: "We couldn't complete this analysis.",
+    retryable: true,
+  };
+}
+
+export function publicChatError(error: unknown) {
+  const view = classifyChatError(error);
+  if (view.kind === "stopped") return "Generation stopped.";
+  if (view.kind === "config") {
+    return "Gemini is not configured on the server. Add GOOGLE_GENERATIVE_AI_API_KEY to the frontend environment and restart.";
+  }
+  return `${view.title}. ${view.detail}`;
 }
 
 function errorMessageFromUnknown(error: unknown) {
@@ -134,7 +217,10 @@ function jsonErrorMessage(raw: string) {
   }
 }
 
-export function formatCapturedFacts(dashboard: IntelligenceDashboard | null) {
+export function formatCapturedFacts(
+  dashboard: IntelligenceDashboard | null,
+  competitors: Array<Pick<Competitor, "name" | "url"> & { platform?: string | null; isActive?: boolean }> = [],
+) {
   if (!dashboard) {
     return [
       "Captured competitor facts: unavailable.",
@@ -153,6 +239,17 @@ export function formatCapturedFacts(dashboard: IntelligenceDashboard | null) {
     `Captured prices: ${summary.capturedProductCount}`,
     `Stored reviews: ${summary.reviewCount}`,
   ];
+
+  if (competitors.length > 0) {
+    lines.push("Tracked competitor records (name is the store/brand):");
+    for (const competitor of competitors.slice(0, 12)) {
+      const platform = competitor.platform ? `; platform ${competitor.platform}` : "";
+      const active = competitor.isActive === false ? "; inactive" : "";
+      lines.push(`- ${competitor.name} | ${competitor.url}${platform}${active}`);
+    }
+  } else if (summary.competitorCount > 0) {
+    lines.push("Competitor names are stored in the database. Call getCompetitors to read the name and URL.");
+  }
 
   if (market.priceBand) {
     lines.push(
@@ -200,19 +297,16 @@ export function formatCapturedFacts(dashboard: IntelligenceDashboard | null) {
 
 export function suggestedChatPrompts(dashboard: IntelligenceDashboard | null) {
   const prompts = [
-    "Which competitor changed price recently?",
-    "How significant is that change?",
-    "What should we do next?",
+    "Which competitors changed prices recently?",
+    "Show me the biggest price changes.",
+    "Compare competitor product prices.",
+    "What new products were detected?",
   ];
   const priceFinding = dashboard?.findings.find(
     (item) => item.kind === "PRICE_DECREASE" || item.kind === "PRICE_INCREASE",
   );
   if (priceFinding) {
     prompts[0] = `Explain this captured change: ${priceFinding.title}`;
-  }
-  const complaint = dashboard?.market.complaints[0];
-  if (complaint) {
-    prompts[2] = `What should we do about repeated “${complaint.theme}” complaints?`;
   }
   return prompts;
 }

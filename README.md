@@ -62,6 +62,80 @@ There are two Claude/Gemini surfaces, both grounded in stored captures:
 
 **Fallback:** if no LLM key is set, the briefing still returns captured findings. Chat shows a configuration error until `GOOGLE_GENERATIVE_AI_API_KEY` is set for the frontend.
 
+## AI Tool Contract
+
+Streaming chat can call server-side tools against the existing Nest tracker API. Normal text answers still work for questions that do not need a live lookup. Tools never scrape live pages and never invent names, prices, or counts.
+
+| Tool | When to use | Sources |
+| --- | --- | --- |
+| `getCompetitors` | Competitor name, URL, who is being tracked | `GET /competitors`, `GET /products` |
+| `getDashboardSummary` | Counts, overview, price band | `GET /intelligence/dashboard`, `GET /dashboard/summary`, `GET /competitors` |
+| `queryCompetitorData` | Current prices, cheapest/most expensive, and snapshot diffs | `GET /competitors`, `GET /products`, `GET /changes/competitor/:id` |
+
+`queryCompetitorData` input (all optional):
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `competitorName` | string | Case-insensitive partial match on competitor name |
+| `productName` | string | Case-insensitive partial match on product name |
+| `changeType` | `PRICE_INCREASE` \| `PRICE_DECREASE` \| `NEW_PRODUCT` \| `REMOVED_PRODUCT` \| `AVAILABILITY_CHANGE` \| `ALL` | Filter by detected change kind |
+| `limit` | integer 1–20 | Max rows to return (default 10) |
+
+`queryCompetitorData` distinguishes **no data** from **data with no changes**:
+
+| `status` | Meaning |
+| --- | --- |
+| `changes` | Snapshot diffs were found |
+| `stable` | Products exist; latest comparison found no diffs |
+| `no_products` | A competitor is tracked but nothing has been captured yet |
+| `no_competitors` | The workspace has no competitors |
+| `no_match` | The name/product filter matched no records |
+
+Zero snapshot diffs with captured products is a successful `stable` result (`hasChanges: false`). The UI says **No price changes detected**, not **No matching competitor data found**.
+
+### Error behavior
+
+If the tracker API is unreachable or every change request fails, the tool throws `Couldn't retrieve competitor data`. The AI SDK marks the tool part as `output-error`. The chat UI stays up, shows a designed error card (no stack traces), and offers **Retry**.
+
+### UI lifecycle states
+
+| State | What the seller sees |
+| --- | --- |
+| `input-streaming` | Dashed, pulsing “Preparing competitor data query…” — the model is still forming arguments |
+| `input-available` | Left navy bar + labeled chips for tool / competitor / product / change type |
+| `output-available` | `CompetitorPriceChangeCard` rows (previous/current price, difference, percent) — not raw JSON |
+| `output-error` | Rose error card + retry |
+
+States share a 200ms border/background transition so the card morphs instead of jumping.
+
+### Development failure tests
+
+Sabotage query params work **only** when `NODE_ENV` is not `production` (local `npm run dev` / tests). They never run on Vercel production.
+
+Open `/ai-assistant?testError=KIND`:
+
+| `testError` | What it does |
+| --- | --- |
+| `network` | Client throws before fetch |
+| `api` or `500` | Chat route returns HTTP 500 |
+| `429` | Chat route returns HTTP 429 |
+| `midstream` | Stream starts, then errors |
+| `tool` | `queryCompetitorData` throws |
+| `empty` | Tool returns no matching rows |
+
+Sabotage applies to the first **submit** only. **Retry** sends `trigger: regenerate-message`, which is not sabotaged, so you can fail the first stream and then recover with Retry while `?testError=` stays in the URL.
+
+### UI lifecycle states
+
+| State | What the seller sees |
+| --- | --- |
+| `input-streaming` | Dashed, pulsing “Preparing competitor data query…” — the model is still forming arguments |
+| `input-available` | Left navy bar + labeled chips for tool / competitor / product / change type |
+| `output-available` | `CompetitorPriceChangeCard` rows (previous/current price, difference, percent) — not raw JSON |
+| `output-error` | Rose error card + retry |
+
+States share a 200ms border/background transition so the card morphs instead of jumping.
+
 ## Known limitations
 
 - Unsupported stores may only get JSON-LD prices, or fail discovery

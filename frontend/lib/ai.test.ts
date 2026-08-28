@@ -75,9 +75,13 @@ describe("parseChatMessages", () => {
 });
 
 describe("formatCapturedFacts", () => {
-  it("includes stored prices and findings without inventing extra competitors", () => {
-    const facts = formatCapturedFacts(sampleDashboard);
+  it("includes stored prices, competitor names, and findings without inventing extra competitors", () => {
+    const facts = formatCapturedFacts(sampleDashboard, [
+      { name: "ABC Shoes", url: "https://abcshoes.example", platform: "SHOPIFY", isActive: true },
+    ]);
     expect(facts).toContain("Ayan Bags");
+    expect(facts).toContain("ABC Shoes");
+    expect(facts).toContain("https://abcshoes.example");
     expect(facts).toContain("PKR 2400 to PKR 2050");
     expect(facts).not.toContain("invent");
   });
@@ -89,7 +93,7 @@ describe("formatCapturedFacts", () => {
 
 describe("publicChatError", () => {
   it("hides quota and key details from the user", () => {
-    expect(publicChatError(new Error("You exceeded your current quota, billing"))).toMatch(/rate-limited/);
+    expect(publicChatError(new Error("You exceeded your current quota, billing"))).toMatch(/Too many requests/);
     expect(publicChatError(new Error("You exceeded your current quota, billing"))).not.toContain("billing");
     expect(publicChatError(new Error("API_KEY_INVALID: secret-google-key"))).not.toContain("secret-google-key");
     expect(
@@ -100,18 +104,15 @@ describe("publicChatError", () => {
       ),
     ).toMatch(/not configured/);
     expect(publicChatError(new Error("RESOURCE_EXHAUSTED: You exceeded your current quota"))).toMatch(
-      /rate-limited/,
+      /Too many requests/,
     );
     expect(publicChatError(new Error("RESOURCE_EXHAUSTED: You exceeded your current quota"))).not.toContain(
       "RESOURCE_EXHAUSTED",
     );
-    expect(
-      publicChatError(
-        new Error(
-          "This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.6-flash",
-        ),
-      ),
-    ).toMatch(/not available/);
+    expect(publicChatError(new Error("HTTP_429"))).toMatch(/wait a moment/);
+    expect(publicChatError(new Error("HTTP_500"))).toMatch(/temporarily unavailable/);
+    expect(publicChatError(new Error("NETWORK_FAILURE"))).toMatch(/internet connection/);
+    expect(publicChatError(new Error("MIDSTREAM_FAILURE"))).toMatch(/could not be completed/);
   });
 });
 

@@ -6,6 +6,12 @@ const convertToModelMessages = vi.fn((messages: unknown) => messages);
 vi.mock("ai", () => ({
   streamText: (options: unknown) => streamText(options),
   convertToModelMessages: (messages: unknown) => convertToModelMessages(messages),
+  tool: (definition: unknown) => definition,
+  stepCountIs: (count: number) => ({ type: "stepCountIs", count }),
+  UI_MESSAGE_STREAM_HEADERS: {
+    "content-type": "text/event-stream; charset=utf-8",
+    "x-vercel-ai-ui-message-stream": "v1",
+  },
 }));
 
 vi.mock("@ai-sdk/google", () => ({
@@ -63,6 +69,8 @@ describe("POST /api/chat", () => {
       messages: unknown[];
       model: { provider: string; modelId: string };
       system: string;
+      tools: { queryCompetitorData: unknown; getCompetitors: unknown; getDashboardSummary: unknown };
+      stopWhen: { type: string; count: number };
     };
     expect(args.abortSignal).toBeInstanceOf(AbortSignal);
     expect(args.abortSignal.aborted).toBe(false);
@@ -71,6 +79,10 @@ describe("POST /api/chat", () => {
     expect(args.model.modelId).toBe("gemini-3.6-flash");
     expect(args.system).toContain("Ayan Mall cut Tote Bag price");
     expect(args.system).toContain("Never invent");
+    expect(args.tools).toHaveProperty("queryCompetitorData");
+    expect(args.tools).toHaveProperty("getCompetitors");
+    expect(args.tools).toHaveProperty("getDashboardSummary");
+    expect(args.stopWhen).toEqual({ type: "stepCountIs", count: 6 });
   });
 
   it("rejects an empty user message", async () => {
@@ -106,5 +118,96 @@ describe("POST /api/chat", () => {
       error: expect.stringMatching(/GOOGLE_GENERATIVE_AI_API_KEY/),
     });
     expect(streamText).not.toHaveBeenCalled();
+  });
+
+  it("returns 429 when the development sabotage header is set", async () => {
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost:3001/api/chat", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer test-token",
+          "x-chat-test-error": "429",
+        },
+        body: JSON.stringify({
+          messages: [{ id: "1", role: "user", parts: [{ type: "text", text: "Show prices" }] }],
+        }),
+      }),
+    );
+    expect(response.status).toBe(429);
+    expect(streamText).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when the development API sabotage header is set", async () => {
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost:3001/api/chat", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer test-token",
+          "x-chat-test-error": "api",
+        },
+        body: JSON.stringify({
+          messages: [{ id: "1", role: "user", parts: [{ type: "text", text: "Show prices" }] }],
+        }),
+      }),
+    );
+    expect(response.status).toBe(500);
+    expect(streamText).not.toHaveBeenCalled();
+  });
+
+  it("sabotages the first midstream submit, then streams on regenerate", async () => {
+    const { POST } = await import("./route");
+    const messages = [{ id: "1", role: "user", parts: [{ type: "text", text: "Show prices" }] }];
+    const first = await POST(
+      new Request("http://localhost:3001/api/chat", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer test-token",
+          "x-chat-test-error": "midstream",
+        },
+        body: JSON.stringify({ trigger: "submit-message", messages }),
+      }),
+    );
+    expect(first.status).toBe(200);
+    expect(await first.text()).toContain("MIDSTREAM_FAILURE");
+    expect(streamText).not.toHaveBeenCalled();
+
+    const retry = await POST(
+      new Request("http://localhost:3001/api/chat", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer test-token",
+          "x-chat-test-error": "midstream",
+        },
+        body: JSON.stringify({ trigger: "regenerate-message", messages }),
+      }),
+    );
+    expect(retry.status).toBe(200);
+    expect(streamText).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not return 429 on regenerate even if the sabotage header is still present", async () => {
+    const { POST } = await import("./route");
+    const retry = await POST(
+      new Request("http://localhost:3001/api/chat", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer test-token",
+          "x-chat-test-error": "429",
+        },
+        body: JSON.stringify({
+          trigger: "regenerate-message",
+          messages: [{ id: "1", role: "user", parts: [{ type: "text", text: "Show prices" }] }],
+        }),
+      }),
+    );
+    expect(retry.status).toBe(200);
+    expect(streamText).toHaveBeenCalledTimes(1);
   });
 });

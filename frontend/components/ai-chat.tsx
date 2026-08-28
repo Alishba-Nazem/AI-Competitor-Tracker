@@ -13,8 +13,24 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { ChatFailureCard } from "@/components/chat-failure-card";
+import { DashboardSummaryToolPart } from "@/components/dashboard-summary-tool";
+import { GetCompetitorsToolPart } from "@/components/get-competitors-tool";
+import { QueryCompetitorDataToolPart } from "@/components/query-competitor-data-tool";
 import { StreamMarkdown } from "@/components/stream-markdown";
-import { CHAT_API_PATH, publicChatError, suggestedChatPrompts, textFromChatMessage } from "@/lib/ai";
+import {
+  CHAT_API_PATH,
+  classifyChatError,
+  suggestedChatPrompts,
+  textFromChatMessage,
+} from "@/lib/ai";
+import type { ChatMessage } from "@/lib/ai/chat-tools";
+import {
+  CHAT_TEST_ERROR_HEADER,
+  chatTriggerFromRequestBody,
+  developmentSabotageForRequest,
+  parseChatTestError,
+} from "@/lib/ai/chat-test-error";
 import { getAuthToken } from "@/lib/auth";
 import type { IntelligenceDashboard } from "@/lib/types";
 
@@ -23,15 +39,22 @@ const BOTTOM_THRESHOLD_PX = 72;
 export function AiChat({
   dashboard = null,
   className = "",
+  testErrorQuery = null,
 }: {
   dashboard?: IntelligenceDashboard | null;
   className?: string;
+  testErrorQuery?: string | null;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const pinnedToBottom = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const retryLock = useRef(false);
+  const lastRetryableError = useRef<ReturnType<typeof classifyChatError> | null>(null);
   const [input, setInput] = useState("");
   const [showJump, setShowJump] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+
+  const testError = parseChatTestError(testErrorQuery);
 
   const transport = useMemo(
     () =>
@@ -41,8 +64,40 @@ export function AiChat({
           const token = getAuthToken();
           return token ? { Authorization: `Bearer ${token}` } : {};
         },
+        prepareSendMessagesRequest: ({
+          api,
+          id,
+          messages: history,
+          body,
+          headers,
+          credentials,
+          trigger,
+          messageId,
+        }) => {
+          const nextHeaders = Object.fromEntries(new Headers(headers).entries());
+          const sabotage = developmentSabotageForRequest(testError, trigger);
+          if (sabotage) nextHeaders[CHAT_TEST_ERROR_HEADER] = sabotage;
+          return {
+            api,
+            credentials,
+            headers: nextHeaders,
+            body: { ...body, id, messages: history, trigger, messageId },
+          };
+        },
         fetch: async (input, init) => {
-          const response = await fetch(input, init);
+          const sabotage = developmentSabotageForRequest(testError, chatTriggerFromRequestBody(init?.body));
+          if (sabotage === "network") {
+            throw new TypeError("Failed to fetch");
+          }
+          let response: Response;
+          try {
+            response = await fetch(input, init);
+          } catch (error) {
+            if (error instanceof DOMException && error.name === "AbortError") throw error;
+            throw new Error("NETWORK_FAILURE");
+          }
+          if (response.status === 429) throw new Error("HTTP_429");
+          if (response.status >= 500) throw new Error("HTTP_500");
           if (!response.ok) {
             const body = await response.text();
             throw new Error(body || `Request failed (${response.status}).`);
@@ -50,22 +105,29 @@ export function AiChat({
           return response;
         },
       }),
-    [],
+    [testError],
   );
 
-  const { messages, sendMessage, status, stop, error, clearError } = useChat({
+  const { messages, sendMessage, regenerate, status, stop, error, clearError } = useChat<ChatMessage>({
     transport,
   });
   const busy = status === "submitted" || status === "streaming";
-  const errorText = error ? publicChatError(error) : null;
-  const showError = Boolean(errorText && errorText !== "Generation stopped.");
+  const errorView = error ? classifyChatError(error) : null;
+  if (errorView && errorView.kind !== "stopped") lastRetryableError.current = errorView;
+  const displayedError =
+    errorView && errorView.kind !== "stopped"
+      ? errorView
+      : retrying && !busy
+        ? lastRetryableError.current
+        : null;
+  const showError = Boolean(displayedError);
   const lastMessage = messages[messages.length - 1];
-  const lastAssistantText =
-    lastMessage?.role === "assistant" ? textFromChatMessage(lastMessage) : "";
   const showThinking =
-    status === "submitted" || (status === "streaming" && lastMessage?.role === "assistant" && !lastAssistantText.trim());
+    status === "submitted" ||
+    (status === "streaming" && lastMessage?.role === "assistant" && !hasVisibleAssistantParts(lastMessage));
 
   const prompts = suggestedChatPrompts(dashboard);
+  const canSend = Boolean(input.trim()) && !busy && !retrying;
 
   const updatePinned = useCallback(() => {
     const el = scrollerRef.current;
@@ -80,7 +142,7 @@ export function AiChat({
     const el = scrollerRef.current;
     if (!el || !pinnedToBottom.current) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages, status, showThinking]);
+  }, [messages, status, showThinking, showError]);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -88,6 +150,23 @@ export function AiChat({
     el.addEventListener("scroll", updatePinned, { passive: true });
     return () => el.removeEventListener("scroll", updatePinned);
   }, [updatePinned]);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const syncKeyboard = () => {
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      document.documentElement.style.setProperty("--chat-keyboard-inset", `${inset}px`);
+    };
+    syncKeyboard();
+    viewport.addEventListener("resize", syncKeyboard);
+    viewport.addEventListener("scroll", syncKeyboard);
+    return () => {
+      viewport.removeEventListener("resize", syncKeyboard);
+      viewport.removeEventListener("scroll", syncKeyboard);
+      document.documentElement.style.removeProperty("--chat-keyboard-inset");
+    };
+  }, []);
 
   function jumpToLatest() {
     const el = scrollerRef.current;
@@ -99,12 +178,27 @@ export function AiChat({
 
   function submitText(text: string) {
     const next = text.trim();
-    if (!next || busy) return;
+    if (!next || busy || retrying || retryLock.current) return;
     clearError();
     pinnedToBottom.current = true;
     setShowJump(false);
     setInput("");
     void sendMessage({ text: next });
+  }
+
+  function retryFailedTurn() {
+    if (retryLock.current || busy || retrying) return;
+    const messageId = lastAssistantMessageId(messages);
+    retryLock.current = true;
+    setRetrying(true);
+    clearError();
+    pinnedToBottom.current = true;
+    void (messageId ? regenerate({ messageId }) : regenerate())
+      .catch(() => undefined)
+      .finally(() => {
+        retryLock.current = false;
+        setRetrying(false);
+      });
   }
 
   function onSubmit(event: FormEvent) {
@@ -125,16 +219,19 @@ export function AiChat({
   }
 
   return (
-    <div className={`flex min-h-0 flex-col overflow-hidden border border-slate-200 bg-white ${className}`}>
+    <div
+      className={`flex min-h-0 flex-col overflow-hidden border border-slate-200 bg-white ${className}`}
+      style={{ paddingBottom: "var(--chat-keyboard-inset, 0px)" }}
+    >
       <div className="relative min-h-0 flex-1">
         <div
           ref={scrollerRef}
-          className="h-full overflow-x-hidden overflow-y-auto px-3 py-4 sm:px-4"
+          className="chat-scroller h-full overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
           tabIndex={0}
           aria-label="Conversation"
         >
           {messages.length === 0 && !showThinking ? (
-            <EmptyChat prompts={prompts} disabled={busy} onPick={submitText} />
+            <EmptyChat prompts={prompts} disabled={busy || retrying} onPick={submitText} />
           ) : (
             <ol className="space-y-3">
               {messages.map((message) => {
@@ -143,13 +240,28 @@ export function AiChat({
                 const isLiveEmpty =
                   isAssistant &&
                   message.id === lastMessage?.id &&
-                  !text.trim() &&
-                  (status === "streaming" || status === "submitted");
+                  !hasVisibleAssistantParts(message) &&
+                  (status === "streaming" || status === "submitted" || retrying);
+                const interrupted =
+                  isAssistant &&
+                  message.id === lastMessage?.id &&
+                  showError &&
+                  displayedError?.kind === "interrupted" &&
+                  hasVisibleAssistantParts(message);
                 return (
                   <li key={message.id}>
                     {isAssistant ? (
-                      <AssistantBubble>
-                        {isLiveEmpty ? <ThinkingIndicator /> : <StreamMarkdown text={text} />}
+                      <AssistantBubble interrupted={interrupted}>
+                        {isLiveEmpty ? (
+                          <ThinkingIndicator />
+                        ) : (
+                          <AssistantParts
+                            message={message}
+                            onRetryTool={retryFailedTurn}
+                            retryDisabled={busy || retrying}
+                            retrying={retrying}
+                          />
+                        )}
                       </AssistantBubble>
                     ) : (
                       <UserBubble text={text} />
@@ -162,6 +274,17 @@ export function AiChat({
                   <AssistantBubble>
                     <ThinkingIndicator />
                   </AssistantBubble>
+                </li>
+              ) : null}
+              {showError && displayedError ? (
+                <li>
+                  <ChatFailureCard
+                    title={displayedError.title}
+                    detail={displayedError.detail}
+                    retryable={displayedError.retryable}
+                    retrying={retrying || busy}
+                    onRetry={retryFailedTurn}
+                  />
                 </li>
               ) : null}
             </ol>
@@ -178,13 +301,10 @@ export function AiChat({
         ) : null}
       </div>
 
-      {showError ? (
-        <p className="border-t border-rose-100 bg-rose-50 px-4 py-2 text-sm text-rose-800" role="alert">
-          {errorText}
-        </p>
-      ) : null}
-
-      <form onSubmit={onSubmit} className="border-t border-slate-200 bg-slate-50/80 p-3">
+      <form
+        onSubmit={onSubmit}
+        className="border-t border-slate-200 bg-slate-50/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      >
         <label htmlFor="ai-chat-input" className="sr-only">
           Message the AI Competitor Analyst
         </label>
@@ -196,17 +316,19 @@ export function AiChat({
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={onKeyDown}
-            disabled={busy}
-            placeholder={busy ? "Waiting for Gemini…" : "Ask about prices, catalog changes, or reviews…"}
-            className="max-h-32 min-h-11 flex-1 resize-y !py-2.5"
+            disabled={busy || retrying}
+            placeholder={busy || retrying ? "Analyzing competitor data…" : "Ask about prices, catalog changes, or reviews…"}
+            className="max-h-32 min-h-11 flex-1 resize-y !py-2.5 text-base sm:text-sm"
             aria-describedby="ai-chat-hint"
+            autoComplete="off"
+            enterKeyHint="send"
           />
           {busy ? (
             <button type="button" className="button-danger shrink-0" onClick={onStop} aria-label="Stop generating">
               Stop
             </button>
           ) : (
-            <button type="submit" className="button-primary shrink-0" disabled={!input.trim()}>
+            <button type="submit" className="button-primary shrink-0" disabled={!canSend}>
               Send
             </button>
           )}
@@ -230,10 +352,9 @@ function EmptyChat({
 }) {
   return (
     <div className="mx-auto max-w-lg py-6 text-center sm:py-10">
-      <p className="text-sm font-semibold text-slate-900">AI Competitor Analyst</p>
+      <p className="text-sm font-semibold text-slate-900">Ask the AI Analyst about your competitors</p>
       <p className="mt-2 text-sm leading-6 text-stone-600">
-        Ask about competitor prices, new products, price moves, and review themes. Gemini only
-        uses captured store data — it will say when a number is not in the tracker.
+        Analyze prices, products, catalog changes, and competitor activity.
       </p>
       <ul className="mt-4 flex flex-col gap-2">
         {prompts.map((prompt) => (
@@ -253,30 +374,109 @@ function EmptyChat({
   );
 }
 
+function AssistantParts({
+  message,
+  onRetryTool,
+  retryDisabled,
+  retrying,
+}: {
+  message: ChatMessage;
+  onRetryTool: () => void;
+  retryDisabled: boolean;
+  retrying: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      {message.parts.map((part, index) => {
+        if (part.type === "text") {
+          if (!part.text.trim()) return null;
+          return <StreamMarkdown key={`${message.id}-text-${index}`} text={part.text} />;
+        }
+        if (part.type === "tool-queryCompetitorData") {
+          return (
+            <QueryCompetitorDataToolPart
+              key={part.toolCallId}
+              part={part}
+              onRetry={onRetryTool}
+              retryDisabled={retryDisabled}
+              retrying={retrying}
+            />
+          );
+        }
+        if (part.type === "tool-getCompetitors") {
+          return (
+            <GetCompetitorsToolPart
+              key={part.toolCallId}
+              part={part}
+              onRetry={onRetryTool}
+              retryDisabled={retryDisabled}
+              retrying={retrying}
+            />
+          );
+        }
+        if (part.type === "tool-getDashboardSummary") {
+          return (
+            <DashboardSummaryToolPart
+              key={part.toolCallId}
+              part={part}
+              onRetry={onRetryTool}
+              retryDisabled={retryDisabled}
+              retrying={retrying}
+            />
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
+}
+
+function lastAssistantMessageId(messages: ChatMessage[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === "assistant") return messages[index].id;
+  }
+  return undefined;
+}
+
+function hasVisibleAssistantParts(message: ChatMessage) {
+  return message.parts.some((part) => {
+    if (part.type === "text") return Boolean(part.text.trim());
+    return part.type === "tool-queryCompetitorData" || part.type === "dynamic-tool" || part.type.startsWith("tool-");
+  });
+}
+
 function UserBubble({ text }: { text: string }) {
   return (
-    <div className="ml-auto max-w-[min(100%,28rem)] rounded bg-[#163e62] px-3 py-2 text-sm leading-6 text-white">
+    <div className="ml-auto max-w-[min(100%,28rem)] rounded bg-[#163e62] px-3 py-2 text-sm leading-6 break-words text-white">
       <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-200">You</p>
       <p className="whitespace-pre-wrap break-words">{text}</p>
     </div>
   );
 }
 
-function AssistantBubble({ children }: { children: ReactNode }) {
+function AssistantBubble({ children, interrupted = false }: { children: ReactNode; interrupted?: boolean }) {
   return (
     <div className="mr-auto max-w-[min(100%,36rem)] rounded border border-slate-200 bg-white px-3 py-2">
       <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#163e62]">
         AI Competitor Analyst
       </p>
       {children}
+      {interrupted ? (
+        <p className="mt-2 text-xs font-semibold text-rose-800">Interrupted</p>
+      ) : null}
     </div>
   );
 }
 
 function ThinkingIndicator() {
   return (
-    <p className="text-sm text-stone-600" role="status" aria-live="polite">
-      AI is thinking…
-    </p>
+    <div className="min-h-[4.5rem]" role="status" aria-live="polite">
+      <p className="text-sm font-medium text-slate-800">Analyzing competitor data…</p>
+      <div className="mt-3 space-y-2" aria-hidden="true">
+        <div className="h-2 w-5/6 animate-pulse rounded bg-slate-200" />
+        <div className="h-2 w-2/3 animate-pulse rounded bg-slate-200" />
+        <div className="h-2 w-1/2 animate-pulse rounded bg-slate-200" />
+      </div>
+    </div>
   );
 }

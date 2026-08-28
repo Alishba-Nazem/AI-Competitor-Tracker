@@ -40,6 +40,11 @@ button {
   cursor: pointer;
 }
 
+.chat-scroller {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
