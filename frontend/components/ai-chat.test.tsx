@@ -268,4 +268,90 @@ describe("AiChat", () => {
     expect(screen.getByText("Too many requests")).toBeInTheDocument();
     expect(screen.queryByText("HTTP_429")).not.toBeInTheDocument();
   });
+
+  it("renders the seller question in the conversation", () => {
+    chatState.messages = [
+      { id: "u1", role: "user", parts: [{ type: "text", text: "Which competitor changed price recently?" }] },
+    ];
+    render(<AiChat />);
+    expect(screen.getByText("Which competitor changed price recently?")).toBeInTheDocument();
+    expect(screen.getByText("You")).toBeInTheDocument();
+  });
+
+  it("renders a getCompetitors tool result inside the assistant bubble", () => {
+    chatState.messages = [
+      { id: "u1", role: "user", parts: [{ type: "text", text: "Who am I tracking?" }] },
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-getCompetitors",
+            toolCallId: "t-comp",
+            state: "output-available",
+            input: {},
+            output: {
+              queriedAt: "2026-08-25T00:00:00.000Z",
+              competitorCount: 1,
+              productCount: 12,
+              message: "You are tracking 1 competitor.",
+              competitors: [
+                {
+                  id: 10,
+                  name: "Ayan Mall",
+                  url: "https://ayan.example",
+                  platform: "SHOPIFY",
+                  isActive: true,
+                  lastCapturedAt: null,
+                  productCount: 12,
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ];
+    render(<AiChat />);
+    expect(screen.getByText("You are tracking 1 competitor.")).toBeInTheDocument();
+    expect(screen.getByText("Ayan Mall")).toBeInTheDocument();
+    expect(screen.getByText("https://ayan.example")).toBeInTheDocument();
+  });
+
+  it("renders a getDashboardSummary tool result inside the assistant bubble", () => {
+    chatState.messages = [
+      { id: "u1", role: "user", parts: [{ type: "text", text: "Give me a dashboard overview." }] },
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-getDashboardSummary",
+            toolCallId: "t-sum",
+            state: "output-available",
+            input: {},
+            output: {
+              queriedAt: "2026-08-25T00:00:00.000Z",
+              competitorCount: 1,
+              productCount: 12,
+              capturedProductCount: 8,
+              reviewCount: 40,
+              findingCount: 1,
+              priceChangeCount: 1,
+              newProductCount: 0,
+              changesThisWeek: 1,
+              category: "Bags",
+              market: "Pakistan",
+              priceBand: { min: 799, median: 2050, max: 2400, currency: "PKR", sampleSize: 8 },
+              competitorNames: ["Ayan Mall"],
+              message: "Your dashboard has 1 competitor and 12 products.",
+            },
+          },
+        ],
+      },
+    ];
+    render(<AiChat />);
+    expect(screen.getByText("Your dashboard has 1 competitor and 12 products.")).toBeInTheDocument();
+    expect(screen.getByText("Competitors")).toBeInTheDocument();
+    expect(screen.getByText("Price changes")).toBeInTheDocument();
+  });
 });
