@@ -138,6 +138,82 @@ Sabotage applies to the first **submit** only. **Retry** sends `trigger: regener
 
 States share a 200ms border/background transition so the card morphs instead of jumping.
 
+## 3D Product Experience
+
+On the **Products** table (`/products`), each row has a **View in 3D** action that opens a modal with an interactive 3D preview of that tracked product, alongside a live customization panel (color, material, roughness, auto-rotate, manual rotate/zoom, reset). It sits next to **Capture Now** rather than replacing anything — the table, filters, capture flow, and API calls are unchanged.
+
+### Why here
+
+`/products` was the only existing screen with a per-item "product" concept a 3D view could attach to (the app tracks competitor listings, it doesn't sell physical products itself). Products already carry a real `imageUrl` scraped from the competitor's store, so that photo is the natural fallback/evidence image — no new content had to be invented.
+
+### Technologies
+
+`three`, `@react-three/fiber`, `@react-three/drei` (added; nothing else new). Everything else — the modal, buttons, panel, layout — reuses the existing `Modal`/`Field`/button classes from `components/ui.tsx` and the existing Tailwind v4 setup. `Modal` gained one optional `widthClassName` prop (default unchanged) so this feature could ask for a wider dialog without touching any other caller.
+
+### Main interactions
+
+- **Orbit/zoom** — `@react-three/drei` `OrbitControls`, mouse drag or touch drag to rotate, wheel or pinch to zoom (`enablePan` off so it can't be confused with page panning on mobile).
+- **Color** — White / Black / Blue / Red swatches update the model's material color immediately.
+- **Material** — Matte / Metallic segmented control changes `metalness`; a separate **Roughness** slider gives finer control on top of that.
+- **Auto rotate** — toggle; spins the model at a fixed, slow rate via `useFrame` when on.
+- **Reset view** — returns the camera to its initial position/target.
+- **Manual rotate/zoom buttons** — keyboard- and screen-reader-reachable equivalents of drag-to-orbit and pinch-to-zoom, so the feature isn't mouse/touch-only.
+
+### 3D model
+
+There is no product-specific 3D asset in this project (products are scraped listings with photos, not models I have the rights to reproduce as GLB). Rather than block the feature on sourcing and licensing an unrelated stock model, `ProductModel` (`components/product-3d/product-model.tsx`) builds a small bottle-shaped mesh from primitive geometries (a handful of `cylinderGeometry` calls: body, shoulder, neck, cap, label band) — a few thousand triangles, one shared `meshStandardMaterial`, zero textures, zero network requests for geometry. The component is structured so a real GLB could be dropped in later via `@react-three/drei`'s `useGLTF` without touching the scene, controls, or configurator.
+
+### How the scene loads (lazy loading)
+
+Only `product-3d-scene.tsx` imports `three` / `@react-three/fiber` / `@react-three/drei`. It's loaded with:
+
+```ts
+const Product3DScene = dynamic(() => import("./product-3d-scene"), {
+  ssr: false,
+  loading: () => <SceneLoadingSkeleton />,
+});
+```
+
+inside `product-3d-viewer.tsx`, which itself is only mounted when a row's **View in 3D** button is clicked (`Product3DModal` renders `null` until a product is selected — same pattern as the existing `AddProductModal`). So the 3D runtime never loads on initial page load, and doesn't even load when a signed-in user just browses the products table — only on demand.
+
+**Measured chunk size** (production build, `npm run build`): the lazy chunk group registered for `/products` in `.next/server/app/.../react-loadable-manifest.json` is **906,174 bytes raw / 238,795 bytes gzip** (three.js + R3F + drei runtime; verified with `zlib.gzipSync`). That chunk does **not** appear in the products page's eagerly-loaded script list — confirmed by inspecting the manifest — so a visit to `/products` that never opens the modal does not pay this cost.
+
+### Fallback strategy
+
+Three independent layers keep the page from ever going blank:
+
+1. **WebGL probe** (`webgl-support.ts`) — checked once before the canvas is even attempted. No WebGL → straight to the fallback, no wasted work.
+2. **Error boundary** (`Product3DErrorBoundary`) around the `Suspense` boundary — if the scene throws at runtime (context creation failure, driver issue, etc.), it's caught and swapped for the fallback instead of crashing the products page.
+3. **Fallback UI** (`Product3DFallback`) — shows the product's real `imageUrl` (or a generic icon if none was ever captured) plus "3D preview unavailable on this device." / "3D preview could not be loaded. Showing product photo instead." The product name/price header and the rest of the table are unaffected either way.
+
+### Reduced motion
+
+Auto-rotate reads `useReducedMotion()` from `framer-motion` — the same hook `MotionLifecycleButton` already uses elsewhere in this codebase, so this feature follows an existing convention rather than inventing a new one. When the OS preference is set: auto-rotate is forced off, the toggle is disabled with an inline "(off · reduced motion)" note, and the model stays static until the user manually drags/uses the rotate buttons. Manual orbit, zoom, and the configurator are never disabled by this preference — only the continuous animation is.
+
+### Performance and mobile
+
+- `dpr={[1, 1.5]}` caps device pixel ratio so high-DPI phones don't render at full native resolution.
+- `gl={{ powerPreference: "low-power" }}`, no post-processing, no HDRI/environment map (would mean an extra network fetch every open), procedural `ContactShadows` instead of a baked shadow texture.
+- Auto-rotate is the only continuous per-frame work, and it's skipped entirely (`spin=false` short-circuits before touching the ref) whenever it's off or reduced motion is on.
+- `OrbitControls` handles touch natively (one-finger drag to orbit, two-finger pinch to zoom); `enablePan` is off so a stray touch can't drag the product off-screen.
+- The scene component unmounts along with the modal (React Three Fiber tears down the `WebGLRenderer`/GL context on unmount), so closing the modal releases the GPU resources.
+
+### What was actually verified this session
+
+- `npm run typecheck` — passes.
+- `npm run build` (Turbopack production build) — passes; used to measure the chunk size above via the real manifest and `zlib.gzipSync`, not an estimate.
+- `npm test` (Vitest) — 23 files / 90 tests pass, including two new files for this feature (`product-3d-viewer.test.tsx`, `product-3d-viewer.reduced-motion.test.tsx`) covering: WebGL-unavailable fallback (jsdom has no WebGL, so this exercises the real no-WebGL code path), configurator controls rendering and being reachable without a working canvas, default auto-rotate state, and the reduced-motion branch (mocking `window.matchMedia` in an isolated test file, since `useReducedMotion()` caches the OS query on first read).
+- `npm run lint` — pre-existing failures in this repo (unrelated files: `workspace.tsx`, `settings/page.tsx`, `ai-chat.tsx`, and a stray `frontend/frontend/.next` build folder from an earlier run) are unchanged by this feature; none of the new/edited files (`components/product-3d/*`, `products-content.tsx`, `components/ui.tsx`) produced any lint errors.
+
+**Not verified this session** (would need a running Postgres + backend + signed-in browser session, which wasn't set up here): Lighthouse score on a live `/products` page with the 3D modal open, and real-device frame-rate/thermal behavior. The existing production Lighthouse baseline for this app is documented in [docs/CAPSTONE.md](./docs/CAPSTONE.md) (Performance 85 on mobile); this feature was deliberately code-split so that baseline shouldn't move for users who never open the 3D modal, but that has not been re-measured live. Anyone continuing this: run Lighthouse on `/products` before/after opening the modal, and test on a real mid-range Android device for frame pacing.
+
+### What could be improved with more time
+
+- Swap the procedural placeholder for a real, license-cleared GLB per product category, using the `useGLTF` hook the architecture already supports.
+- Persist the chosen color/material per product (currently resets when the modal closes).
+- Add a Draco/Meshopt-compressed GLTF pipeline if/when a real model is introduced, plus a `<meshopt>`/`<KTX2>` texture path.
+- Re-run Lighthouse/WebPageTest on `/products` before and after opening the viewer, on real mid-range Android hardware, and record the numbers here.
+
 ## Known limitations
 
 - Unsupported stores may only get JSON-LD prices, or fail discovery

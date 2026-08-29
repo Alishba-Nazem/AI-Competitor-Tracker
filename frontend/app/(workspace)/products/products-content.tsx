@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AddProductModal } from "@/components/forms";
+import { Product3DModal } from "@/components/product-3d/product-3d-modal";
 import { useToast } from "@/components/toast";
 import {
   CaptureStatusBadge,
@@ -37,6 +38,7 @@ export default function ProductsPageContent() {
   const [capturingCompetitorId, setCapturingCompetitorId] = useState<number | null>(null);
   const [failedProductIds, setFailedProductIds] = useState<number[]>([]);
   const [addProductOpen, setAddProductOpen] = useState(false);
+  const [product3DView, setProduct3DView] = useState<Product | null>(null);
 
   const selectedCompetitor = useMemo(
     () => competitors.find((item) => item.id === selectedCompetitorId) ?? null,
@@ -265,7 +267,14 @@ export default function ProductsPageContent() {
                         <CaptureStatusBadge pending={pending} capturing={capturing} failed={failed} />
                       </td>
                       <td>
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            className="button-secondary !py-2 !text-xs"
+                            onClick={() => setProduct3DView(product)}
+                          >
+                            View in 3D
+                          </button>
                           <button
                             type="button"
                             className="button-primary !py-2 !text-xs"
@@ -294,6 +303,8 @@ export default function ProductsPageContent() {
           onCreated={load}
         />
       )}
+
+      <Product3DModal product={product3DView} onClose={() => setProduct3DView(null)} />
     </>
   );
 }

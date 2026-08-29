@@ -161,11 +161,14 @@ export function Modal({
   description,
   children,
   onClose,
+  widthClassName = "max-w-lg",
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   onClose: () => void;
+  /** Override the default max-w-lg for content that needs more room (e.g. the 3D viewer). */
+  widthClassName?: string;
 }) {
   return (
     <div
@@ -173,7 +176,7 @@ export function Modal({
       onMouseDown={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-200"
+        className={`w-full ${widthClassName} rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-200`}
         onMouseDown={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
