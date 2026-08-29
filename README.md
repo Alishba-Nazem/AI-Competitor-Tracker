@@ -33,6 +33,8 @@ npm run dev                   # http://localhost:3001
 
 Open **http://localhost:3001**, create an account, and complete onboarding with real store URLs (Shopify or Daraz work best).
 
+Motion assignment demo (no sign-in): **http://localhost:3001/motion-demo**
+
 ### Tests
 
 ```bash
