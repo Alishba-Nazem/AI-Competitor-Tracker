@@ -1,239 +1,346 @@
-# Ecommerce Competitor Tracker
-
-Track competitor store prices, catalog changes, and public reviews — then turn captured facts into a short weekly briefing.
+# AI Competitor Price & Product Change Tracker
 
 **Live app:** [https://ai-competitor-tracker.vercel.app](https://ai-competitor-tracker.vercel.app)  
 **API:** [https://ai-competitor-tracker-production.up.railway.app](https://ai-competitor-tracker-production.up.railway.app)  
-**Repo:** [https://github.com/Alishba-Nazem/AI-Competitor-Tracker](https://github.com/Alishba-Nazem/AI-Competitor-Tracker)
+**Repository:** [https://github.com/Alishba-Nazem/AI-Competitor-Tracker](https://github.com/Alishba-Nazem/AI-Competitor-Tracker)
 
-## Project brief
+## Overview
 
-Small ecommerce sellers cannot sit in rival stores all day. This app is for Pakistan-market shop owners (and similar catalogs) who need a live view of competitor prices, new products, and customer complaints. I chose it because the data has to be scraped from real stores — invented mock prices would make the product useless — and because an LLM only helps after those facts exist.
+This application helps small ecommerce sellers watch competitor stores without checking those sites by hand every day. A seller signs in, describes their own shop, and adds competitor store URLs. The backend discovers products from those pages, captures current selling prices and public reviews, stores snapshots, and compares new captures with previous ones.
 
-## Local setup
+The problem it solves is **trustworthy competitor monitoring**. Invented or mocked prices would make a dashboard look finished and still be useless for a real shop. The product is designed for Pakistan-market sellers (and similar catalogs) who sell alongside Shopify and Daraz stores and need a live view of rival prices, catalog changes, and customer complaints.
 
-You need Node 24, PostgreSQL, and two terminals.
+Competitor monitoring is useful for small ecommerce businesses because they rarely have a pricing team. A price cut, a new listing, or a repeated shipping complaint on a rival store can change what a seller should do this week. This app turns those captured facts into a research dashboard, a short AI briefing, and a grounded chat assistant.
+
+## Core features
+
+Only features implemented in this repository:
+
+- **Accounts and workspaces** — signup, login, JWT auth. Each user owns one business profile and only that user’s competitors.
+- **Onboarding** — three steps: store details, competitor URLs, then automatic product discovery.
+- **Competitor tracking** — add, list, and open a per-competitor workspace.
+- **Product discovery** — products are found from the competitor store or seller URL (Shopify, Daraz, or JSON-LD fallback). Sellers do not type product prices by hand.
+- **Price monitoring** — manual **Capture prices** / **Capture Now**, plus a daily UTC cron for active competitors (`DAILY` or `WEEKLY`).
+- **Catalog change detection** — compares the latest snapshot with the previous one: price increase/decrease, new product, removed product, availability change.
+- **Public reviews** — scrape and store public reviews; theme keywords are used when no LLM is available.
+- **Research dashboard** — competitor / product / change / review counts, AI briefing, findings, review sentiment charts, market gaps.
+- **Historical comparison** — snapshots, snapshot products, product price history, and a Changes page with filters.
+- **AI briefing** — `GET /intelligence/briefing` builds a fact pack from stored data, then Gemini (preferred), Claude (if Gemini is unset), or a rule-based fallback.
+- **AI Analyst** — streaming Gemini chat at `/ai-assistant` with tools that read the Nest tracker API. Tools do not scrape live pages and do not invent prices.
+- **3D product preview** — optional **View in 3D** modal on `/products` (procedural placeholder mesh; scraped photo is the fallback).
+- **Motion demo** — unauthenticated `/motion-demo` page for a Framer Motion lifecycle button (course assignment, not part of the seller workflow).
+
+## Tech stack
+
+### Frontend
+
+- Next.js 16.3, React 19, TypeScript
+- Tailwind CSS 4
+- Framer Motion
+- Vercel AI SDK (`ai`, `@ai-sdk/google`, `@ai-sdk/react`)
+- Zod
+- Three.js, React Three Fiber, Drei (lazy-loaded 3D viewer)
+- Vitest, React Testing Library, Playwright
+
+### Backend
+
+- NestJS 11
+- Prisma 7
+- class-validator / class-transformer
+- bcryptjs + jsonwebtoken
+- `@nestjs/schedule` (midnight UTC cron)
+- Jest + Supertest
+
+### Database
+
+- PostgreSQL
+- Prisma schema in `backend/prisma/schema.prisma`
+
+### AI
+
+- Google Gemini — Nest briefings (`GEMINI_API_KEY`) and Next.js streaming chat (`GOOGLE_GENERATIVE_AI_API_KEY`)
+- Anthropic Claude — optional briefing fallback (`ANTHROPIC_API_KEY`)
+- Rule-based briefing from the same fact pack when no LLM key is set
+
+### Scraping / data collection
+
+- Cheerio (HTML parse)
+- Playwright (browser fetch where needed)
+- Platform detectors for Shopify and Daraz, plus JSON-LD product extraction
+
+### Deployment
+
+- Frontend: Vercel
+- API and cron: Railway
+- Postgres: Railway plugin or another hosted Postgres (see [DEPLOYMENT.md](./DEPLOYMENT.md))
+
+### Other tools
+
+- Node 24 (`engines` in root and backend `package.json`)
+- GitHub Actions workflow `.github/workflows/frontend-tests.yml` (typecheck, Vitest, Playwright on push)
+- ESLint, Prettier
+
+## Architecture
+
+```mermaid
+flowchart TD
+  Seller[Seller browser]
+  Next[Next.js frontend]
+  Chat["POST /api/chat Gemini stream + tools"]
+  Nest[NestJS API]
+  Scrape[Cheerio / Playwright scraper]
+  DB[(PostgreSQL)]
+  Detect[Snapshot change detection]
+  Brief[Intelligence briefing]
+  UI[Research dashboard / AI Analyst]
+
+  Seller --> Next
+  Next --> Nest
+  Next --> Chat
+  Chat --> Nest
+  Nest --> Scrape
+  Nest --> DB
+  Nest --> Detect
+  Detect --> DB
+  Nest --> Brief
+  Brief --> Next
+  Next --> UI
+```
+
+Change detection runs in Nest against stored snapshots **before** any model sees the data. Briefings and chat consume structured facts and diffs; they do not compute raw database differences themselves.
+
+Deeper diagrams and design notes: [docs/architecture.md](./docs/architecture.md).
+
+## How it works
+
+1. The seller creates an account and completes onboarding (store name, niche, competitor URLs).
+2. The backend discovers products from each competitor URL and stores them on that user’s profile.
+3. **Capture prices** (manual or midnight UTC cron) writes a snapshot of name, URL, price, currency, and availability.
+4. A second capture is compared with the previous snapshot. Price, availability, new, and removed products become typed change records.
+5. Public reviews can be captured and stored; ratings feed the dashboard charts.
+6. The intelligence layer builds a fact pack (counts, findings, price band, review themes). Gemini or Claude may rewrite that pack into a short briefing; otherwise a fallback briefing is built from the same facts.
+7. The Research dashboard shows counts, briefing, findings, sentiment, and competitors. The AI Analyst streams answers using the seller’s JWT and tracker tools (`getCompetitors`, `getDashboardSummary`, `queryCompetitorData`).
+
+## Setup
+
+A stranger should be able to run this from a fresh clone. Frontend and backend are **separate** Node packages. There is no root `npm start`.
+
+### Prerequisites
+
+- Node.js **24**
+- npm
+- PostgreSQL (local or hosted)
+- Two terminals
+- Optional: a Google AI Studio key for briefings and/or streaming chat; optional Anthropic key for briefing fallback
+
+### Clone
 
 ```bash
-# backend
+git clone https://github.com/Alishba-Nazem/AI-Competitor-Tracker.git
+cd AI-Competitor-Tracker
+```
+
+### Backend
+
+```bash
 cd backend
-cp .env.example .env          # fill DATABASE_URL, JWT_SECRET, optional GEMINI_API_KEY
+cp .env.example .env
+```
+
+Fill `DATABASE_URL` (and optionally `DIRECT_DATABASE_URL`) with a `postgresql://` URL — not a `prisma://` Accelerate URL. Set `JWT_SECRET` to a long random string. Set `FRONTEND_URL=http://localhost:3001`. Optional: `GEMINI_API_KEY` and/or `ANTHROPIC_API_KEY`.
+
+```bash
 npm install
 npx prisma generate
 npx prisma db push
-npm run start:dev             # http://localhost:3000
-
-# frontend
-cd frontend
-cp .env.example .env.local    # NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
-# For streaming chat on /ai-assistant, also set GOOGLE_GENERATIVE_AI_API_KEY in .env.local (server-side, not NEXT_PUBLIC_)
-npm install
-npm run dev                   # http://localhost:3001
+npm run start:dev
 ```
 
-Open **http://localhost:3001**, create an account, and complete onboarding with real store URLs (Shopify or Daraz work best).
+API: **http://localhost:3000**
 
-Motion assignment demo (no sign-in): **http://localhost:3001/motion-demo**
+### Frontend
+
+```bash
+cd frontend
+cp .env.example .env.local
+```
+
+Set `NEXT_PUBLIC_API_BASE_URL=http://localhost:3000`. For `/ai-assistant`, also set `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local` (server-side only — never `NEXT_PUBLIC_`).
+
+```bash
+npm install
+npm run dev
+```
+
+UI: **http://localhost:3001**
+
+Open that URL, create an account, and complete onboarding with real Shopify or Daraz store URLs. Motion assignment (no sign-in): **http://localhost:3001/motion-demo**
+
+### Build commands
+
+```bash
+# backend production build (also runs prisma generate)
+cd backend
+npm run build
+npm run start:prod
+
+# frontend production build
+cd frontend
+npm run build
+npm start
+```
+
+`frontend` `npm start` is `next start` (default port 3000). For local production-like serving beside the API, set `PORT=3001` or pass `-p 3001` so it does not collide with Nest.
 
 ### Tests
 
 ```bash
 cd backend && npm test
+cd backend && npm run test:e2e
 cd frontend && npm test
+cd frontend && npm run typecheck
+cd frontend && npm run test:e2e
 ```
 
-## Architecture
+### Deployment notes
 
-| Part | Role |
+Frontend is deployed on Vercel; the API and cron run on Railway. Prisma schema is applied with `prisma db push` on Railway predeploy (`npm run railway:predeploy`). Full operator checklist: [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Environment variables
+
+Never commit real secrets. Use placeholders only.
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Purpose |
 | --- | --- |
-| `frontend/` | Next.js 16 UI: auth, onboarding, research dashboard, competitor workspace |
-| `backend/` | NestJS 11 API: auth, scrape, snapshots, reviews, intelligence, cron |
-| `backend/prisma/` | Postgres schema. Each `User` owns one `BusinessProfile` and only that user’s competitors |
-| Scraper | Discovers products (Shopify / Daraz / JSON-LD fallback), captures current selling price, stores snapshots |
-| Reviews | Public reviews only. Themes are keyword-based when an LLM is unavailable |
-| Scheduler | Daily / weekly recapture of active competitors |
+| `NEXT_PUBLIC_API_BASE_URL` | Browser and Next.js server base URL for the Nest API. Local: `http://localhost:3000`. No trailing slash. |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Server-only Gemini key for `POST /api/chat`. Example: `YOUR_API_KEY`. Do not use a `NEXT_PUBLIC_` prefix. |
+| `GOOGLE_GENERATIVE_AI_MODEL` | Optional. Defaults to `gemini-3.6-flash`. |
 
-Each signed-in account is isolated. A new signup always starts with empty onboarding.
+### Backend (`backend/.env`)
 
-## AI integration
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Direct Postgres URL for Prisma Client. Example: `postgresql://USER:PASSWORD@HOST:5432/DB?sslmode=require` |
+| `DIRECT_DATABASE_URL` | Optional alias preferred by `prisma.config.ts` for `generate` / `db push`. |
+| `PORT` | Nest listen port. Local default `3000`. Railway injects this. |
+| `FRONTEND_URL` | Comma-separated allowed CORS origins. Local: `http://localhost:3001`. |
+| `JWT_SECRET` | Signs login/signup tokens. Use a long random value in production. |
+| `GEMINI_API_KEY` | Optional. Preferred key for Nest dashboard briefings. Example: `YOUR_API_KEY` |
+| `GEMINI_MODEL` | Optional briefing model override. Defaults to `gemini-3.6-flash`. |
+| `ANTHROPIC_API_KEY` | Optional Claude briefing fallback. A claude.ai subscription does not fund this key. |
+| `ANTHROPIC_MODEL` | Optional. Defaults to `claude-3-5-haiku-20241022`. |
 
-There are two Claude/Gemini surfaces, both grounded in stored captures:
+Railway `GEMINI_API_KEY` and Vercel `GOOGLE_GENERATIVE_AI_API_KEY` are **separate**. Chat does not read the Railway briefing key.
 
-1. **Weekly briefing** — `GET /intelligence/briefing` on the Nest API. Builds a fact pack from captured prices, snapshot diffs, and reviews, then asks Gemini (preferred) or Claude for JSON (`headline`, `bullets`, `risks`, `nextActions`). Fallback: rule-based briefing from the same facts. Prompt: `backend/src/intelligence/briefing.ts`.
-2. **Streaming chat** — `POST /api/chat` on the Next.js app. Uses the Vercel AI SDK `streamText` + Gemini. The Research page links to **AI Analyst** (`/ai-assistant`). The route loads `/intelligence/dashboard` with the user’s JWT so answers use real captured facts. `GOOGLE_GENERATIVE_AI_API_KEY` stays on the Next.js server (Vercel / `.env.local`), never `NEXT_PUBLIC_`.
+## Usage example
 
-**Fallback:** if no LLM key is set, the briefing still returns captured findings. Chat shows a configuration error until `GOOGLE_GENERATIVE_AI_API_KEY` is set for the frontend.
+1. Open the app (local `http://localhost:3001` or the live Vercel URL).
+2. Create an account and sign in.
+3. Onboarding step 1: enter your store name, optional store URL, and a niche (for example Bags).
+4. Step 2: add a real competitor, such as a Daraz seller or a Shopify store URL.
+5. Finish onboarding so the API can discover products from that URL.
+6. Open **Research**. You should see competitor / product counts once discovery succeeds.
+7. Open the competitor workspace → **Discover products** if the catalog is empty → **Capture prices**.
+8. Capture again later (or after a known price change) so snapshot diffs can appear under **What changed** and **Changes**.
+9. Optionally capture public reviews, then read the sentiment charts on Research.
+10. Read **AI briefing** on Research (Gemini/Claude or fallback facts).
+11. Open **AI Analyst** and ask a question such as “Which tracked product changed price?” The model may call `queryCompetitorData` and render price-change cards from stored diffs.
 
-## AI Tool Contract
+## V2 Evaluation Results
 
-Streaming chat can call server-side tools against the existing Nest tracker API. Normal text answers still work for questions that do not need a live lookup. Tools never scrape live pages and never invent names, prices, or counts.
+Dated, verified evidence from this repository and a re-run of unit/component tests on 30 Aug 2026. There was no earlier document titled “V2 evaluation”; this section compiles existing measurements. Do not treat scores from different dates as one continuous lab run.
 
-| Tool | When to use | Sources |
+**Automated tests (30 Aug 2026, this documentation pass)**
+
+| Suite | Command | Result |
 | --- | --- | --- |
-| `getCompetitors` | Competitor name, URL, who is being tracked | `GET /competitors`, `GET /products` |
-| `getDashboardSummary` | Counts, overview, price band | `GET /intelligence/dashboard`, `GET /dashboard/summary`, `GET /competitors` |
-| `queryCompetitorData` | Current prices, cheapest/most expensive, and snapshot diffs | `GET /competitors`, `GET /products`, `GET /changes/competitor/:id` |
+| Backend Jest | `cd backend && npm test` | 29 suites, **137 passed** |
+| Frontend Vitest | `cd frontend && npm test` | 23 files, **90 passed** |
 
-`queryCompetitorData` input (all optional):
+**Earlier packet (25 Aug 2026, [docs/CAPSTONE.md](./docs/CAPSTONE.md))** — Backend Jest already 29 / 137. Frontend Vitest was then 11 files / 33 passed (before later component, chat, and 3D tests).
 
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `competitorName` | string | Case-insensitive partial match on competitor name |
-| `productName` | string | Case-insensitive partial match on product name |
-| `changeType` | `PRICE_INCREASE` \| `PRICE_DECREASE` \| `NEW_PRODUCT` \| `REMOVED_PRODUCT` \| `AVAILABILITY_CHANGE` \| `ALL` | Filter by detected change kind |
-| `limit` | integer 1–20 | Max rows to return (default 10) |
+**Lighthouse / axe (23 Aug 2026, mobile, live Research page — CAPSTONE)**
 
-`queryCompetitorData` distinguishes **no data** from **data with no changes**:
-
-| `status` | Meaning |
+| Check | Result |
 | --- | --- |
-| `changes` | Snapshot diffs were found |
-| `stable` | Products exist; latest comparison found no diffs |
-| `no_products` | A competitor is tracked but nothing has been captured yet |
-| `no_competitors` | The workspace has no competitors |
-| `no_match` | The name/product filter matched no records |
+| Performance | 85 |
+| Accessibility | 100 |
+| Best Practices | 100 |
+| SEO | 100 |
+| axe `/login` | 0 issues |
+| axe Research dashboard | 0 issues |
 
-Zero snapshot diffs with captured products is a successful `stable` result (`hasChanges: false`). The UI says **No price changes detected**, not **No matching competitor data found**.
+Screenshots: [docs/evidence/](./docs/evidence/).
 
-### Error behavior
+**Lighthouse / WAVE (later homepage audit — [AUDIT.md](./AUDIT.md))**
 
-If the tracker API is unreachable or every change request fails, the tool throws `Couldn't retrieve competitor data`. The AI SDK marks the tool part as `output-error`. The chat UI stays up, shows a designed error card (no stack traces), and offers **Retry**.
+| Check | Baseline | After |
+| --- | ---: | ---: |
+| Lighthouse Performance | 76 | 87 |
+| Lighthouse Accessibility | 100 | 100 |
+| Lighthouse Best Practices | 100 | 100 |
+| Lighthouse SEO | 100 | 100 |
+| WAVE errors | 2 | 0 |
+| WAVE contrast | 0 | 0 |
+| WAVE alerts | 2 | 0 |
+| WAVE AIM | 6.7 / 10 | 10 / 10 |
 
-### UI lifecycle states
+After screenshots: `screenshots/lighthouse-after.png`. Final WAVE counts are from the **WAVE browser extension** on the rendered live homepage, not the online URL-only report.
 
-| State | What the seller sees |
+**Playwright / backend e2e this session:** not re-run here. Specs exist (`frontend/e2e/ai-analyst.spec.ts`, `backend/test/*.e2e-spec.ts`). CI is configured to run frontend typecheck, Vitest, and Playwright on push.
+
+Full write-up: [docs/v2-evaluation.md](./docs/v2-evaluation.md).
+
+`TODO: Attach latest Playwright and backend e2e run logs if you need them in the submission packet.`
+
+## Limitations
+
+- Store HTML and JSON-LD change. Shopify / Daraz selectors and fallbacks need maintenance; unsupported stores may discover nothing or only a JSON-LD price.
+- Scrapes can fail or finish `partial`. A failed capture keeps the previous snapshot; it does not invent a price.
+- Review coverage depends on what the store exposes publicly.
+- Gemini free-tier quota can be exhausted. Briefings then use stored-fact fallback (or Claude if that key is set). Chat needs `GOOGLE_GENERATIVE_AI_API_KEY` on the Next.js host or it shows a configuration error.
+- AI text can mis-summarize; sellers should verify against the captured table before changing their own prices.
+- Products are matched across snapshots by stored `productId`, not fuzzy cross-store matching. A new URL can become a new product row.
+- Data created before per-user workspaces may need a fresh onboarding pass.
+- Live hosting depends on Vercel, Railway, and the Postgres instance staying up and correctly env-configured.
+- The 3D viewer is a small procedural bottle mesh, not a licensed model of the scraped product.
+- Playwright E2E mocks the Nest API and the chat stream; it does not prove a live scrape.
+
+## Future improvements
+
+Realistic V3 ideas given the current architecture:
+
+- Email or digest of the weekly briefing
+- More marketplaces beyond Shopify / Daraz / JSON-LD
+- Attach orphan historical rows created before `userId` isolation
+- Stronger product matching across stores (SKU / normalized title)
+- License-cleared GLB models instead of the procedural 3D placeholder
+- Persist 3D color/material per product
+- Re-measure Lighthouse on `/products` with the 3D modal open
+- Production-safe alerting when cron captures fail
+
+## AI Transparency
+
+I used AI tools including Claude and ChatGPT during development for code assistance, debugging, architecture discussions, documentation, and refinement. I reviewed the generated suggestions, tested the implementation, made the final technical decisions, and verified the application's behavior myself.
+
+## Demo
+
+`TODO: Add final 3–5 minute demo video URL.`
+
+Live walkthrough script (no slides): [docs/demo-script.md](./docs/demo-script.md).
+
+## More documentation
+
+| Document | Purpose |
 | --- | --- |
-| `input-streaming` | Dashed, pulsing “Preparing competitor data query…” — the model is still forming arguments |
-| `input-available` | Left navy bar + labeled chips for tool / competitor / product / change type |
-| `output-available` | `CompetitorPriceChangeCard` rows (previous/current price, difference, percent) — not raw JSON |
-| `output-error` | Rose error card + retry |
-
-States share a 200ms border/background transition so the card morphs instead of jumping.
-
-### Development failure tests
-
-Sabotage query params work **only** when `NODE_ENV` is not `production` (local `npm run dev` / tests). They never run on Vercel production.
-
-Open `/ai-assistant?testError=KIND`:
-
-| `testError` | What it does |
-| --- | --- |
-| `network` | Client throws before fetch |
-| `api` or `500` | Chat route returns HTTP 500 |
-| `429` | Chat route returns HTTP 429 |
-| `midstream` | Stream starts, then errors |
-| `tool` | `queryCompetitorData` throws |
-| `empty` | Tool returns no matching rows |
-
-Sabotage applies to the first **submit** only. **Retry** sends `trigger: regenerate-message`, which is not sabotaged, so you can fail the first stream and then recover with Retry while `?testError=` stays in the URL.
-
-### UI lifecycle states
-
-| State | What the seller sees |
-| --- | --- |
-| `input-streaming` | Dashed, pulsing “Preparing competitor data query…” — the model is still forming arguments |
-| `input-available` | Left navy bar + labeled chips for tool / competitor / product / change type |
-| `output-available` | `CompetitorPriceChangeCard` rows (previous/current price, difference, percent) — not raw JSON |
-| `output-error` | Rose error card + retry |
-
-States share a 200ms border/background transition so the card morphs instead of jumping.
-
-## 3D Product Experience
-
-On the **Products** table (`/products`), each row has a **View in 3D** action that opens a modal with an interactive 3D preview of that tracked product, alongside a live customization panel (color, material, roughness, auto-rotate, manual rotate/zoom, reset). It sits next to **Capture Now** rather than replacing anything — the table, filters, capture flow, and API calls are unchanged.
-
-### Why here
-
-`/products` was the only existing screen with a per-item "product" concept a 3D view could attach to (the app tracks competitor listings, it doesn't sell physical products itself). Products already carry a real `imageUrl` scraped from the competitor's store, so that photo is the natural fallback/evidence image — no new content had to be invented.
-
-### Technologies
-
-`three`, `@react-three/fiber`, `@react-three/drei` (added; nothing else new). Everything else — the modal, buttons, panel, layout — reuses the existing `Modal`/`Field`/button classes from `components/ui.tsx` and the existing Tailwind v4 setup. `Modal` gained one optional `widthClassName` prop (default unchanged) so this feature could ask for a wider dialog without touching any other caller.
-
-### Main interactions
-
-- **Orbit/zoom** — `@react-three/drei` `OrbitControls`, mouse drag or touch drag to rotate, wheel or pinch to zoom (`enablePan` off so it can't be confused with page panning on mobile).
-- **Color** — White / Black / Blue / Red swatches update the model's material color immediately.
-- **Material** — Matte / Metallic segmented control changes `metalness`; a separate **Roughness** slider gives finer control on top of that.
-- **Auto rotate** — toggle; spins the model at a fixed, slow rate via `useFrame` when on.
-- **Reset view** — returns the camera to its initial position/target.
-- **Manual rotate/zoom buttons** — keyboard- and screen-reader-reachable equivalents of drag-to-orbit and pinch-to-zoom, so the feature isn't mouse/touch-only.
-
-### 3D model
-
-There is no product-specific 3D asset in this project (products are scraped listings with photos, not models I have the rights to reproduce as GLB). Rather than block the feature on sourcing and licensing an unrelated stock model, `ProductModel` (`components/product-3d/product-model.tsx`) builds a small bottle-shaped mesh from primitive geometries (a handful of `cylinderGeometry` calls: body, shoulder, neck, cap, label band) — a few thousand triangles, one shared `meshStandardMaterial`, zero textures, zero network requests for geometry. The component is structured so a real GLB could be dropped in later via `@react-three/drei`'s `useGLTF` without touching the scene, controls, or configurator.
-
-### How the scene loads (lazy loading)
-
-Only `product-3d-scene.tsx` imports `three` / `@react-three/fiber` / `@react-three/drei`. It's loaded with:
-
-```ts
-const Product3DScene = dynamic(() => import("./product-3d-scene"), {
-  ssr: false,
-  loading: () => <SceneLoadingSkeleton />,
-});
-```
-
-inside `product-3d-viewer.tsx`, which itself is only mounted when a row's **View in 3D** button is clicked (`Product3DModal` renders `null` until a product is selected — same pattern as the existing `AddProductModal`). So the 3D runtime never loads on initial page load, and doesn't even load when a signed-in user just browses the products table — only on demand.
-
-**Measured chunk size** (production build, `npm run build`): the lazy chunk group registered for `/products` in `.next/server/app/.../react-loadable-manifest.json` is **906,174 bytes raw / 238,795 bytes gzip** (three.js + R3F + drei runtime; verified with `zlib.gzipSync`). That chunk does **not** appear in the products page's eagerly-loaded script list — confirmed by inspecting the manifest — so a visit to `/products` that never opens the modal does not pay this cost.
-
-### Fallback strategy
-
-Three independent layers keep the page from ever going blank:
-
-1. **WebGL probe** (`webgl-support.ts`) — checked once before the canvas is even attempted. No WebGL → straight to the fallback, no wasted work.
-2. **Error boundary** (`Product3DErrorBoundary`) around the `Suspense` boundary — if the scene throws at runtime (context creation failure, driver issue, etc.), it's caught and swapped for the fallback instead of crashing the products page.
-3. **Fallback UI** (`Product3DFallback`) — shows the product's real `imageUrl` (or a generic icon if none was ever captured) plus "3D preview unavailable on this device." / "3D preview could not be loaded. Showing product photo instead." The product name/price header and the rest of the table are unaffected either way.
-
-### Reduced motion
-
-Auto-rotate reads `useReducedMotion()` from `framer-motion` — the same hook `MotionLifecycleButton` already uses elsewhere in this codebase, so this feature follows an existing convention rather than inventing a new one. When the OS preference is set: auto-rotate is forced off, the toggle is disabled with an inline "(off · reduced motion)" note, and the model stays static until the user manually drags/uses the rotate buttons. Manual orbit, zoom, and the configurator are never disabled by this preference — only the continuous animation is.
-
-### Performance and mobile
-
-- `dpr={[1, 1.5]}` caps device pixel ratio so high-DPI phones don't render at full native resolution.
-- `gl={{ powerPreference: "low-power" }}`, no post-processing, no HDRI/environment map (would mean an extra network fetch every open), procedural `ContactShadows` instead of a baked shadow texture.
-- Auto-rotate is the only continuous per-frame work, and it's skipped entirely (`spin=false` short-circuits before touching the ref) whenever it's off or reduced motion is on.
-- `OrbitControls` handles touch natively (one-finger drag to orbit, two-finger pinch to zoom); `enablePan` is off so a stray touch can't drag the product off-screen.
-- The scene component unmounts along with the modal (React Three Fiber tears down the `WebGLRenderer`/GL context on unmount), so closing the modal releases the GPU resources.
-
-### What was actually verified this session
-
-- `npm run typecheck` — passes.
-- `npm run build` (Turbopack production build) — passes; used to measure the chunk size above via the real manifest and `zlib.gzipSync`, not an estimate.
-- `npm test` (Vitest) — 23 files / 90 tests pass, including two new files for this feature (`product-3d-viewer.test.tsx`, `product-3d-viewer.reduced-motion.test.tsx`) covering: WebGL-unavailable fallback (jsdom has no WebGL, so this exercises the real no-WebGL code path), configurator controls rendering and being reachable without a working canvas, default auto-rotate state, and the reduced-motion branch (mocking `window.matchMedia` in an isolated test file, since `useReducedMotion()` caches the OS query on first read).
-- `npm run lint` — pre-existing failures in this repo (unrelated files: `workspace.tsx`, `settings/page.tsx`, `ai-chat.tsx`, and a stray `frontend/frontend/.next` build folder from an earlier run) are unchanged by this feature; none of the new/edited files (`components/product-3d/*`, `products-content.tsx`, `components/ui.tsx`) produced any lint errors.
-
-**Not verified this session** (would need a running Postgres + backend + signed-in browser session, which wasn't set up here): Lighthouse score on a live `/products` page with the 3D modal open, and real-device frame-rate/thermal behavior. The existing production Lighthouse baseline for this app is documented in [docs/CAPSTONE.md](./docs/CAPSTONE.md) (Performance 85 on mobile); this feature was deliberately code-split so that baseline shouldn't move for users who never open the 3D modal, but that has not been re-measured live. Anyone continuing this: run Lighthouse on `/products` before/after opening the modal, and test on a real mid-range Android device for frame pacing.
-
-### What could be improved with more time
-
-- Swap the procedural placeholder for a real, license-cleared GLB per product category, using the `useGLTF` hook the architecture already supports.
-- Persist the chosen color/material per product (currently resets when the modal closes).
-- Add a Draco/Meshopt-compressed GLTF pipeline if/when a real model is introduced, plus a `<meshopt>`/`<KTX2>` texture path.
-- Re-run Lighthouse/WebPageTest on `/products` before and after opening the viewer, on real mid-range Android hardware, and record the numbers here.
-
-## Known limitations
-
-- Unsupported stores may only get JSON-LD prices, or fail discovery
-- Review coverage depends on what the store exposes publicly
-- Gemini briefings need `GEMINI_API_KEY` in Railway; without any LLM key you still get the fallback briefing
-- Streaming chat needs `GOOGLE_GENERATIVE_AI_API_KEY` on the frontend host (Vercel / `.env.local`); a free key from Google AI Studio is enough
-- Existing data created before per-user workspaces may need a fresh onboarding pass
-
-### Later
-
-- Attach orphan historical data to the first account
-- More marketplaces
-- Email digest of the weekly briefing
-
-## Deploy
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md). Frontend is on Vercel; API and cron are on Railway.
-
-## Capstone notes
-
-- [docs/CAPSTONE.md](./docs/CAPSTONE.md) — brief, live URLs, test counts, Lighthouse / axe evidence
-- [docs/REFLECTION.md](./docs/REFLECTION.md)
-- [docs/evidence/](./docs/evidence/) — `lighthouse-mobile.png`, `axe-login.png`, `axe-dashboard.png`
+| [docs/architecture.md](./docs/architecture.md) | Architecture and design decisions |
+| [docs/v2-evaluation.md](./docs/v2-evaluation.md) | Evaluation evidence |
+| [docs/demo-script.md](./docs/demo-script.md) | 3–5 minute live demo script |
+| [docs/retrospective.md](./docs/retrospective.md) | Final retrospective |
+| [docs/submission-index.md](./docs/submission-index.md) | Assignment 8.1 / 8.2 index |
+| [docs/final-checklist.md](./docs/final-checklist.md) | Submission checklist |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Production env and rollback |
+| [docs/CAPSTONE.md](./docs/CAPSTONE.md) | Earlier capstone packet (23–25 Aug 2026) |
+| [AUDIT.md](./AUDIT.md) | Lighthouse / WAVE audit notes |
