@@ -46,7 +46,16 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (!ready) {
-    return <LoadingState text="Checking your session…" />;
+    return (
+      <>
+        {pathname === "/" ? (
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+            Competitor research
+          </h1>
+        ) : null}
+        <LoadingState text="Checking your session…" />
+      </>
+    );
   }
 
   return <>{children}</>;

@@ -66,11 +66,11 @@ export function AuthScreen({
             </span>
             <span className="text-sm font-semibold text-slate-900">Ecommerce Competitor Tracker</span>
           </header>
-          <main id="main-content">
+          <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
             <p className="mt-2 text-sm leading-6 text-stone-600">{subtitle}</p>
             {children}
-          </main>
+          </div>
           <footer className="mt-6 text-sm text-stone-600">
             <nav aria-label="Account">{footer}</nav>
           </footer>

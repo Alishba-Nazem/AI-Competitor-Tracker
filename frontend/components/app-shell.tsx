@@ -103,11 +103,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
         </header>
-        <main id="main-content" className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
           <AuthGate>
             <OnboardingGate>{children}</OnboardingGate>
           </AuthGate>
-        </main>
+        </div>
         <footer className="mx-auto max-w-2xl px-4 pb-6 text-xs text-stone-600 sm:px-6">
           Ecommerce Competitor Tracker · account setup
         </footer>
@@ -201,11 +201,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
           <p className="ml-2 text-sm font-semibold text-white">Ecommerce Competitor Tracker</p>
         </header>
-        <main id="main-content" className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+        <div className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
           <AuthGate>
             <OnboardingGate>{children}</OnboardingGate>
           </AuthGate>
-        </main>
+        </div>
         <footer className="mx-auto max-w-[1280px] px-4 pb-5 text-xs text-stone-600 sm:px-6 lg:px-8">
           Ecommerce Competitor Tracker · competitor prices, catalogs, and reviews
         </footer>

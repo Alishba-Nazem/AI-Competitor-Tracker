@@ -32,7 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`h-full antialiased ${ibmPlexSans.className}`}>
       <body className="min-h-full font-sans">
-        {children}
+        <main id="main-content" className="min-h-full">
+          {children}
+        </main>
       </body>
     </html>
   );
