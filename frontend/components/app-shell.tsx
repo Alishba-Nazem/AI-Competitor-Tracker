@@ -108,13 +108,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             <OnboardingGate>{children}</OnboardingGate>
           </AuthGate>
         </main>
+        <footer className="mx-auto max-w-2xl px-4 pb-6 text-xs text-stone-600 sm:px-6">
+          Ecommerce Competitor Tracker · account setup
+        </footer>
       </div>
     );
   }
 
   const nav = (
     <>
-      <div className="sidebar-heading flex h-14 items-center gap-2.5 px-4">
+      <header className="sidebar-heading flex h-14 items-center gap-2.5 px-4">
         <div className="grid h-8 w-8 place-items-center rounded bg-white text-[11px] font-semibold tracking-wide text-slate-950">
           ECT
         </div>
@@ -122,7 +125,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="truncate text-[13px] font-semibold text-white">Ecommerce Competitor Tracker</div>
           <div className="text-xs text-slate-300">Market tracking</div>
         </div>
-      </div>
+      </header>
       <nav className="flex flex-1 flex-col justify-between px-2 py-3" aria-label="Primary">
         <div className="space-y-0.5">
           {NAV_ITEMS.map((item) => (
@@ -203,6 +206,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <OnboardingGate>{children}</OnboardingGate>
           </AuthGate>
         </main>
+        <footer className="mx-auto max-w-[1280px] px-4 pb-5 text-xs text-stone-600 sm:px-6 lg:px-8">
+          Ecommerce Competitor Tracker · competitor prices, catalogs, and reviews
+        </footer>
       </div>
     </div>
   );

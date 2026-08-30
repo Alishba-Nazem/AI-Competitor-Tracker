@@ -15,6 +15,9 @@ export default function MotionDemoPage() {
       <div id="motion-demo">
         <MotionDemoClient />
       </div>
+      <footer className="mx-auto w-full max-w-xl px-4 pb-10 text-xs text-stone-600">
+        Isolated motion assignment demo. Not part of the signed-in workspace.
+      </footer>
     </main>
   );
 }

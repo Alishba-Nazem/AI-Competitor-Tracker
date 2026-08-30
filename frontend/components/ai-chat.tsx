@@ -228,6 +228,7 @@ export function AiChat({
           ref={scrollerRef}
           className="chat-scroller h-full overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
           tabIndex={0}
+          role="region"
           aria-label="Conversation"
         >
           {messages.length === 0 && !showThinking ? (
@@ -248,10 +249,15 @@ export function AiChat({
                   showError &&
                   displayedError?.kind === "interrupted" &&
                   hasVisibleAssistantParts(message);
+                const announceStream =
+                  isAssistant &&
+                  message.id === lastMessage?.id &&
+                  status === "streaming" &&
+                  !isLiveEmpty;
                 return (
                   <li key={message.id}>
                     {isAssistant ? (
-                      <AssistantBubble interrupted={interrupted}>
+                      <AssistantBubble interrupted={interrupted} live={announceStream}>
                         {isLiveEmpty ? (
                           <ThinkingIndicator />
                         ) : (
@@ -454,13 +460,23 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
-function AssistantBubble({ children, interrupted = false }: { children: ReactNode; interrupted?: boolean }) {
+function AssistantBubble({
+  children,
+  interrupted = false,
+  live = false,
+}: {
+  children: ReactNode;
+  interrupted?: boolean;
+  live?: boolean;
+}) {
   return (
     <div className="mr-auto max-w-[min(100%,36rem)] rounded border border-slate-200 bg-white px-3 py-2">
       <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#163e62]">
         AI Competitor Analyst
       </p>
-      {children}
+      <div aria-live={live ? "polite" : undefined} aria-atomic="false">
+        {children}
+      </div>
       {interrupted ? (
         <p className="mt-2 text-xs font-semibold text-rose-800">Interrupted</p>
       ) : null}

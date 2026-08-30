@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign in",
+  title: {
+    absolute: "Sign in · Ecommerce Competitor Tracker",
+  },
   description: "Sign in to Ecommerce Competitor Tracker to monitor competitor prices, catalogs, and reviews.",
 };
 
