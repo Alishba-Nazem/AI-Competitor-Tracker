@@ -81,9 +81,22 @@ export class ProductsService {
   ) {
     await this.findOne(userId, id);
 
+    // Only persist editable scalars. Passing the request body through to Prisma
+    // would allow competitorId / nested relation writes (cross-tenant moves).
+    const next: {
+      name?: string;
+      url?: string;
+      currentPrice?: number;
+      currency?: string;
+    } = {};
+    if (data.name !== undefined) next.name = data.name;
+    if (data.url !== undefined) next.url = data.url;
+    if (data.currentPrice !== undefined) next.currentPrice = data.currentPrice;
+    if (data.currency !== undefined) next.currency = data.currency;
+
     return this.prisma.product.update({
       where: { id },
-      data,
+      data: next,
     });
   }
 
