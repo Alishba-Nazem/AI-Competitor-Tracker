@@ -6,9 +6,9 @@ This document records a Lighthouse Mobile and WAVE audit of Ecommerce Competitor
 
 The public entry page for an unsigned-in visitor is **Sign in**. The signed-in workspace uses a shared shell (header, primary navigation, main, footer). Streaming chat lives on **AI Competitor Analyst** (`/ai-assistant`).
 
-Before/after Lighthouse screenshots belong in `screenshots/`. Place the baseline capture at `screenshots/lighthouse-before.png`. Do not add a fabricated after screenshot.
+Before/after Lighthouse screenshots are in `screenshots/lighthouse-before.png` and `screenshots/lighthouse-after.png`.
 
-Final Lighthouse and WAVE scores are **not** filled in here until those tools are run again on the updated pages.
+Final WAVE numbers below come from the **WAVE browser extension** on the deployed, rendered homepage (`https://ai-competitor-tracker.vercel.app/`). The online WAVE URL report did not reflect the same rendered page, so it was not used as the verified result.
 
 ## Baseline Lighthouse Results
 
@@ -114,59 +114,71 @@ Reviewed the sign-in / sign-up screens, workspace shell, research dashboard, and
 
 ### Performance
 
-- No performance rewrite. The app already uses `next/font` for IBM Plex Sans. No oversized decorative images were found on the audited auth/workspace chrome. Lighthouse Performance remains the baseline **76** until re-measured.
+- No performance rewrite. The app already uses `next/font` for IBM Plex Sans. No oversized decorative images were found on the audited auth/workspace chrome.
+- A later Lighthouse Mobile re-run on the deployed homepage scored **87** (see Final Lighthouse Results). That measurement is recorded as-is; it was not the result of a dedicated performance project.
 
 ## Final Lighthouse Results
 
-Not re-run after these changes. Do not treat the baseline numbers as after scores.
+Source: Lighthouse Mobile on the deployed homepage, captured in `screenshots/lighthouse-after.png`.
 
 | Category | Score |
 | --- | ---: |
-| Performance | _Pending re-run_ |
-| Accessibility | _Pending re-run_ |
-| Best Practices | _Pending re-run_ |
-| SEO | _Pending re-run_ |
+| Performance | 87 |
+| Accessibility | 100 |
+| Best Practices | 100 |
+| SEO | 100 |
 
-After screenshot (optional, add only a real capture):
+After screenshot:
 
 `screenshots/lighthouse-after.png`
 
 ## Final WAVE Results
 
-Not re-run after these changes.
+Source: WAVE **browser extension** on the deployed, rendered homepage (`https://ai-competitor-tracker.vercel.app/`). The online WAVE URL checker did not match this rendered page, so these counts are from the extension only.
+
+WAVE message: **Congratulations! No errors were detected!**
 
 | Metric | Count |
 | --- | ---: |
-| Errors | _Pending re-run_ |
-| Contrast Errors | _Pending re-run_ |
-| Alerts | _Pending re-run_ |
-| Features | _Pending re-run_ |
-| Structure | _Pending re-run_ |
-| ARIA | _Pending re-run_ |
-| AIM Score | _Pending re-run_ |
+| Errors | 0 |
+| Contrast Errors | 0 |
+| Alerts | 0 |
+| Features | 3 |
+| Structure | 8 |
+| ARIA | 12 |
+| AIM Score | 10 / 10 |
 
 ## Before/After Comparison
 
+| Item | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| Lighthouse Performance | 76 | 87 | +11 |
+| Lighthouse Accessibility | 100 | 100 | 0 |
+| Lighthouse Best Practices | 100 | 100 | 0 |
+| Lighthouse SEO | 100 | 100 | 0 |
+| WAVE Errors | 2 | 0 | −2 |
+| WAVE Contrast Errors | 0 | 0 | 0 |
+| WAVE Alerts | 2 | 0 | −2 |
+| WAVE Features | 0 | 3 | +3 |
+| WAVE Structure | 0 | 8 | +8 |
+| WAVE ARIA | 0 | 12 | +12 |
+| WAVE AIM | 6.7 / 10 | 10 / 10 | +3.3 |
+
+Other qualitative changes:
+
 | Item | Before | After |
 | --- | --- | --- |
-| Lighthouse Performance | 76 | Not re-measured |
-| Lighthouse Accessibility | 100 | Not re-measured |
-| Lighthouse Best Practices | 100 | Not re-measured |
-| Lighthouse SEO | 100 | Not re-measured |
-| WAVE Errors | 2 (title, language) | Code fixes applied; WAVE not re-run |
-| WAVE Contrast Errors | 0 | Not re-measured |
-| WAVE Alerts | 2 (headings, regions) | Code fixes applied; WAVE not re-run |
-| WAVE AIM | 6.7 / 10 | Not re-measured |
 | Document title | Short or default-only on some routes | Descriptive titles on sign-in, sign-up, and Research |
 | `html lang` | Already `en` in source | Unchanged (`en`) |
-| Headings | Form `h1`; marketing copy was a `<p>` | Marketing copy is `<h2>` |
-| Landmarks | Incomplete (`main` only on auth; no footer) | `header`, `nav`, `main`, `footer` on auth and workspace |
+| Headings | Form `h1`; marketing copy was a `<p>`; homepage session-check had no `<h1>` | Marketing copy is `<h2>`; homepage exposes a visible **Competitor research** `<h1>` |
+| Landmarks | Incomplete (`main` only on auth; no footer; homepage `<main>` easy to miss in the document) | Root `<main id="main-content">`; `header`, `nav`, and `footer` on auth and workspace |
 | Chat live region | Thinking only | Thinking + streaming assistant text |
+| WAVE verification | Baseline WAVE report | Browser extension on the live rendered homepage (not the online URL report) |
 
 ## Conclusion
 
-Baseline Lighthouse Mobile was already strong on Accessibility, Best Practices, and SEO (all 100), with Performance at 76. WAVE still reported a missing/uninformative title, missing/invalid language, no heading structure, and no page regions.
+Baseline Lighthouse Mobile was already strong on Accessibility, Best Practices, and SEO (all 100), with Performance at 76. WAVE still reported a missing/uninformative title, missing/invalid language, no heading structure, and no page regions (AIM 6.7 / 10).
 
-The code now uses explicit document titles, keeps `lang="en"`, maps existing copy to a real heading outline, and exposes header / nav / main / footer landmarks without changing the visual design. AI Analyst streaming output is announced politely; Stop and the composer stay keyboard-operable with visible focus.
+After the landmark, title, heading, and chat live-region work, the WAVE browser extension on the deployed homepage reported **0 errors, 0 contrast errors, 0 alerts**, Features 3, Structure 8, ARIA 12, and **AIM 10 / 10**, with the message “Congratulations! No errors were detected!” Lighthouse Mobile on the same deployed homepage is **87 / 100 / 100 / 100**.
 
-Re-run Lighthouse Mobile and WAVE on the same URL, save real screenshots under `screenshots/`, and replace the pending final-score rows in this file. Until that happens, this audit does not claim improved numeric scores.
+The online WAVE URL report was not used as the final result because it did not reflect the same rendered homepage as the browser extension.
