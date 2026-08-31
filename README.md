@@ -327,7 +327,8 @@ I used AI tools including Claude and ChatGPT during development for code assista
 
 ## Demo
 
-`TODO: Add final 3–5 minute demo video URL.`
+- **Live Application:** [https://ai-competitor-tracker.vercel.app/](https://ai-competitor-tracker.vercel.app/)
+- **Demo Video:** [https://www.loom.com/share/2158c3245a4b48298bdb247f02dcfdb3](https://www.loom.com/share/2158c3245a4b48298bdb247f02dcfdb3)
 
 Live walkthrough script (no slides): [docs/demo-script.md](./docs/demo-script.md).
 

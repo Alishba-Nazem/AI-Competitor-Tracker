@@ -12,7 +12,7 @@ Status key:
 
 ### Completed
 
-- [x] **README** — root [README.md](../README.md) titled *AI Competitor Price & Product Change Tracker*, with overview, verified features, stack, Mermaid architecture, setup, env vars, usage, V2 evaluation, limitations, future work, AI transparency, demo placeholder
+- [x] **README** — root [README.md](../README.md) titled *AI Competitor Price & Product Change Tracker*, with overview, verified features, stack, Mermaid architecture, setup, env vars, usage, V2 evaluation, limitations, future work, AI transparency, live app and demo video links
 - [x] **Reproducible setup** — clone, `backend` / `frontend` install, Prisma `generate` + `db push`, `start:dev` / `dev`, build scripts from each `package.json`
 - [x] **Usage examples** — README usage section + this checklist’s verify commands
 - [x] **Architecture** — [architecture.md](./architecture.md)
@@ -23,14 +23,15 @@ Status key:
 - [x] **Central repository** — https://github.com/Alishba-Nazem/AI-Competitor-Tracker
 - [x] **Submission index** — [submission-index.md](./submission-index.md)
 - [x] **Demo script** — [demo-script.md](./demo-script.md) (3–5 min, no slides)
+- [x] **Live application** — https://ai-competitor-tracker.vercel.app/
+- [x] **3–5 minute demo video** — https://www.loom.com/share/2158c3245a4b48298bdb247f02dcfdb3
+- [x] **Live run on camera** — recorded walkthrough of the live app (Loom)
+- [x] **Showcase / build-in-public thread** — https://lnkd.in/p/dbk5mvBB
 
 ### Incomplete / TODO
 
-- [ ] **3–5 minute demo video** — `TODO: Add final 3–5 minute demo video URL`
-- [ ] **Live run on camera** — record Research + capture + AI using [demo-script.md](./demo-script.md)
 - [ ] **Design decision explained on camera** — snapshot diffs before the model (script 3:15–3:45)
 - [ ] **Limitation explained on camera** — HTML scrape fragility, Gemini quota, or product-id matching (script 3:45–4:15)
-- [ ] **Showcase / build-in-public thread** — `TODO` (also listed under 8.2)
 - [ ] **Playwright + backend e2e logs attached** — specs and CI exist; latest local pass counts not recorded in this session
 
 ---
@@ -41,14 +42,14 @@ Status key:
 
 - [x] **Submission index** — [submission-index.md](./submission-index.md)
 - [x] **500–800 word retrospective** — [retrospective.md](./retrospective.md)
+- [x] **Demo video linked from README and this index** — https://www.loom.com/share/2158c3245a4b48298bdb247f02dcfdb3
+- [x] **Build-in-public post** — https://lnkd.in/p/dbk5mvBB
 
 ### Incomplete / TODO
 
 - [ ] **Hours log** — `TODO — add hours log URL or file`
 - [ ] **FlyRank domain / personal site** — `TODO — add personal site URL`
-- [ ] **Build-in-public post** — `TODO — add post URL`
 - [ ] **Final review** — `TODO — add final review URL or notes`
-- [ ] **Demo video linked from README and this index** — same URL as 8.1
 
 ---
 

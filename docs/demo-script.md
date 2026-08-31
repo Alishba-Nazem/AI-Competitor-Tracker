@@ -95,4 +95,4 @@ Stop. Do not open slides.
 - [ ] At least one real competitor URL already captured (or a URL you know works)
 - [ ] You know whether briefing is Gemini / Claude / fallback today
 - [ ] You have a question that matches **your** catalog (do not read a scripted price that is not on screen)
-- [ ] `TODO: Add final 3–5 minute demo video URL` in the README after you upload
+- [x] Demo video is linked from the README: https://www.loom.com/share/2158c3245a4b48298bdb247f02dcfdb3

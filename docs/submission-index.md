@@ -7,7 +7,7 @@ Central index for Assignment 8.1 and Assignment 8.2. Links that are not in the r
 | Item | URL |
 | --- | --- |
 | GitHub repository | https://github.com/Alishba-Nazem/AI-Competitor-Tracker |
-| Live application | https://ai-competitor-tracker.vercel.app |
+| Live application | https://ai-competitor-tracker.vercel.app/ |
 | Live API | https://ai-competitor-tracker-production.up.railway.app |
 
 ## Assignment 8.1 — Documentation and Demo
@@ -19,7 +19,7 @@ Central index for Assignment 8.1 and Assignment 8.2. Links that are not in the r
 | V2 evaluation | [v2-evaluation.md](./v2-evaluation.md) |
 | Limitations | [../README.md#limitations](../README.md#limitations) (also discussed in evaluation) |
 | Demo script | [demo-script.md](./demo-script.md) |
-| Demo video | `TODO: Add final 3–5 minute demo video URL` |
+| Demo video | https://www.loom.com/share/2158c3245a4b48298bdb247f02dcfdb3 |
 
 Related dated evidence (not a substitute for the V2 write-up):
 
@@ -36,7 +36,7 @@ Related dated evidence (not a substitute for the V2 write-up):
 | Retrospective (500–800 words) | [retrospective.md](./retrospective.md) |
 | Hours log | `TODO — add hours log URL or file` |
 | Personal / FlyRank domain site | `TODO — add personal site URL` |
-| Build-in-public post | `TODO — add post URL` |
+| Build-in-public post | https://lnkd.in/p/dbk5mvBB |
 | Final review | `TODO — add final review URL or notes` |
 
 ## How to use this packet
@@ -44,6 +44,6 @@ Related dated evidence (not a substitute for the V2 write-up):
 1. Start at the [README](../README.md) for setup and the product story.
 2. Read [architecture.md](./architecture.md) for the real data flow.
 3. Read [v2-evaluation.md](./v2-evaluation.md) for dated scores and test commands.
-4. Record the demo using [demo-script.md](./demo-script.md), then paste the video URL into the README Demo section and this index.
+4. Record the demo using [demo-script.md](./demo-script.md). The recorded video is linked from the README Demo section and this index.
 5. Submit the retrospective from [retrospective.md](./retrospective.md).
 6. Tick remaining 8.2 items in [final-checklist.md](./final-checklist.md) as you publish them.
