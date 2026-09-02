@@ -206,13 +206,14 @@ export class ScraperService {
       const capturedProducts = results.filter(
         (result): result is CaptureSuccess => 'price' in result,
       );
-      const failedProducts = results
-        .filter((result): result is CaptureFailure => 'error' in result)
-        .map(({ product, error }) => ({
-          productId: product.id,
-          name: product.name,
-          error,
-        }));
+      const failedCaptures = results.filter(
+        (result): result is CaptureFailure => 'error' in result,
+      );
+      const failedProducts = failedCaptures.map(({ product, error }) => ({
+        productId: product.id,
+        name: product.name,
+        error,
+      }));
 
       if (capturedProducts.length === 0) {
         await this.prisma.captureLog.update({
@@ -267,17 +268,36 @@ export class ScraperService {
           }
 
           await transaction.snapshotProduct.createMany({
-            data: capturedProducts.map(
-              ({ product, price, currency, name, availability }) => ({
-                snapshotId: createdSnapshot.id,
-                productId: product.id,
-                name,
-                url: product.url,
-                price,
-                currency,
-                availability,
+            data: [
+              ...capturedProducts.map(
+                ({ product, price, currency, name, availability }) => ({
+                  snapshotId: createdSnapshot.id,
+                  productId: product.id,
+                  name,
+                  url: product.url,
+                  price,
+                  currency,
+                  availability,
+                }),
+              ),
+              // Keep failed SKUs in the snapshot at last known price so a
+              // partial capture is not treated as a catalog removal.
+              ...failedCaptures.flatMap(({ product }) => {
+                const price = this.lastKnownPrice(product.currentPrice);
+                if (price === undefined) return [];
+                return [
+                  {
+                    snapshotId: createdSnapshot.id,
+                    productId: product.id,
+                    name: product.name,
+                    url: product.url,
+                    price,
+                    currency: product.currency,
+                    availability: product.availability ?? null,
+                  },
+                ];
               }),
-            ),
+            ],
           });
 
           await transaction.competitor.update({
@@ -1102,6 +1122,18 @@ export class ScraperService {
     }
 
     return highestPrice;
+  }
+
+  private lastKnownPrice(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+    if (value && typeof value === 'object' && 'toNumber' in value) {
+      const price = (value as { toNumber(): number }).toNumber();
+      return Number.isFinite(price) && price > 0 ? price : undefined;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
   }
 
   private parsePrice(value: unknown) {
