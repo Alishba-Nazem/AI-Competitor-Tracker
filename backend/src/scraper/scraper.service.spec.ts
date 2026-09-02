@@ -96,6 +96,142 @@ describe('ScraperService', () => {
     });
   });
 
+  it('carries last-known prices into a partial snapshot so failed SKUs are not treated as removed', async () => {
+    prisma.competitor.findUnique.mockResolvedValue({
+      id: 7,
+      name: 'Example Store',
+      url: 'https://example.com',
+      products: [
+        {
+          id: 11,
+          name: 'Running Shoe',
+          url: 'https://example.com/shoe',
+          currentPrice: 99,
+          currency: 'USD',
+          availability: 'IN_STOCK',
+        },
+        {
+          id: 12,
+          name: 'Tote',
+          url: 'https://example.com/tote',
+          currentPrice: 45.5,
+          currency: 'USD',
+          availability: 'IN_STOCK',
+        },
+      ],
+    });
+    prisma.$transaction.mockImplementation(
+      async (callback: (client: typeof transaction) => unknown) =>
+        callback(transaction),
+    );
+    transaction.snapshot.create.mockResolvedValue({ id: 42, competitorId: 7 });
+    global.fetch = jest.fn().mockImplementation(async (url: string) => {
+      if (url === 'https://example.com/tote') {
+        return { ok: false, status: 500, text: async () => 'down' };
+      }
+      return {
+        ok: true,
+        text: async () =>
+          '<script type="application/ld+json">{"@type":"Product","offers":{"@type":"Offer","price":"84.95","priceCurrency":"USD"}}</script>',
+      };
+    });
+
+    const result = await service.scrapeCompetitor(7);
+
+    expect(result.status).toBe('partial');
+    expect(result.capturedProducts).toEqual([
+      expect.objectContaining({ productId: 11, price: 84.95 }),
+    ]);
+    expect(result.failedProducts).toEqual([
+      expect.objectContaining({ productId: 12, name: 'Tote' }),
+    ]);
+    expect(transaction.product.update).toHaveBeenCalledTimes(1);
+    expect(transaction.product.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 11 } }),
+    );
+    expect(transaction.snapshotProduct.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          snapshotId: 42,
+          productId: 11,
+          name: 'Running Shoe',
+          url: 'https://example.com/shoe',
+          price: 84.95,
+          currency: 'USD',
+          availability: 'UNKNOWN',
+        },
+        {
+          snapshotId: 42,
+          productId: 12,
+          name: 'Tote',
+          url: 'https://example.com/tote',
+          price: 45.5,
+          currency: 'USD',
+          availability: 'IN_STOCK',
+        },
+      ],
+    });
+  });
+
+  it('does not snapshot a failed SKU that has never had a captured price', async () => {
+    prisma.competitor.findUnique.mockResolvedValue({
+      id: 7,
+      name: 'Example Store',
+      url: 'https://example.com',
+      products: [
+        {
+          id: 11,
+          name: 'Running Shoe',
+          url: 'https://example.com/shoe',
+          currentPrice: 99,
+          currency: 'USD',
+        },
+        {
+          id: 12,
+          name: 'New Tote',
+          url: 'https://example.com/tote',
+          currentPrice: 0,
+          currency: 'USD',
+        },
+      ],
+    });
+    prisma.$transaction.mockImplementation(
+      async (callback: (client: typeof transaction) => unknown) =>
+        callback(transaction),
+    );
+    transaction.snapshot.create.mockResolvedValue({ id: 42, competitorId: 7 });
+    global.fetch = jest.fn().mockImplementation(async (url: string) => {
+      if (url === 'https://example.com/tote') {
+        return { ok: false, status: 404, text: async () => 'missing' };
+      }
+      return {
+        ok: true,
+        text: async () =>
+          '<script type="application/ld+json">{"@type":"Product","offers":{"@type":"Offer","price":"84.95","priceCurrency":"USD"}}</script>',
+      };
+    });
+
+    const result = await service.scrapeCompetitor(7);
+
+    expect(result.status).toBe('partial');
+    expect(result.failedProducts).toEqual([
+      expect.objectContaining({ productId: 12 }),
+    ]);
+    expect(transaction.snapshotProduct.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          snapshotId: 42,
+          productId: 11,
+          name: 'Running Shoe',
+          url: 'https://example.com/shoe',
+          price: 84.95,
+          currency: 'USD',
+          availability: 'UNKNOWN',
+        },
+      ],
+    });
+  });
+
   it('prefers the real product offer over financing or monthly pricing values', async () => {
     prisma.competitor.findUnique.mockResolvedValue({
       id: 7,
