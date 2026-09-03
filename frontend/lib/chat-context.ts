@@ -51,6 +51,7 @@ export async function loadCapturedChatContext(authorization: string | null) {
     }
 
     if (!response.ok) {
+      // Token already passed the tracker auth guard; dashboard data is just missing.
       return {
         authorized: true as const,
         factsText: formatCapturedFacts(null),
@@ -69,12 +70,12 @@ export async function loadCapturedChatContext(authorization: string | null) {
       factsText: formatCapturedFacts(dashboard, competitors),
     };
   } catch {
+    // fetch() threw: the tracker never verified the token. Do not treat a dummy
+    // Authorization header as a session — that would invoke Gemini with the
+    // server API key for anyone who can reach /api/chat while the API is down.
     return {
-      authorized: true as const,
-      factsText: [
-        "Captured competitor facts: the tracker API could not be reached.",
-        "Tell the user you cannot read stored prices until the API is available.",
-      ].join("\n"),
+      authorized: false as const,
+      factsText: formatCapturedFacts(null),
     };
   }
 }
