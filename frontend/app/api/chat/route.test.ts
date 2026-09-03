@@ -85,6 +85,31 @@ describe("POST /api/chat", () => {
     expect(args.stopWhen).toEqual({ type: "stepCountIs", count: 6 });
   });
 
+  it("returns 401 when the tracker cannot verify the Authorization header", async () => {
+    const { loadCapturedChatContext } = await import("@/lib/chat-context");
+    vi.mocked(loadCapturedChatContext).mockResolvedValueOnce({
+      authorized: false,
+      factsText: "Captured competitor facts: unavailable.",
+    });
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost:3001/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer totally-fake" },
+        body: JSON.stringify({
+          messages: [{ id: "1", role: "user", parts: [{ type: "text", text: "Who is cheapest?" }] }],
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      error: expect.stringMatching(/sign in/i),
+    });
+    expect(streamText).not.toHaveBeenCalled();
+  });
+
   it("rejects an empty user message", async () => {
     const { POST } = await import("./route");
     const response = await POST(
