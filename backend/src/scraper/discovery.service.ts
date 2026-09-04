@@ -5,6 +5,11 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { discoverDarazProducts } from './daraz-discovery';
+import {
+  clipDbString,
+  PRODUCT_EXTERNAL_ID_MAX_CHARS,
+  PRODUCT_NAME_MAX_CHARS,
+} from './db-string';
 import { fetchHtml, fetchJson } from './http';
 import { detectPlatform } from './platform';
 import { discoverShopifyProducts } from './shopify-discovery';
@@ -89,11 +94,13 @@ export class DiscoveryService {
       await this.prisma.product.create({
         data: {
           competitorId: competitor.id,
-          name: product.name,
+          name: clipDbString(product.name, PRODUCT_NAME_MAX_CHARS),
           url: product.url,
           currentPrice: 0,
           currency: seedCurrency,
-          externalId: product.externalId,
+          externalId: product.externalId
+            ? clipDbString(product.externalId, PRODUCT_EXTERNAL_ID_MAX_CHARS)
+            : undefined,
           imageUrl: product.imageUrl,
           availability: product.availability,
         },

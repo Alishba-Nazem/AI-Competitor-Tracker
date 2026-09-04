@@ -96,6 +96,63 @@ describe('ScraperService', () => {
     });
   });
 
+  it('clips oversized scraped titles so VARCHAR(255) cannot abort the snapshot transaction', async () => {
+    const longTitle = `Buy ${'Ultra '.repeat(80)}Running Shoe`;
+    prisma.competitor.findUnique.mockResolvedValue({
+      id: 7,
+      name: 'Example Store',
+      url: 'https://example.com',
+      products: [
+        {
+          id: 11,
+          name: 'Running Shoe',
+          url: 'https://example.com/shoe',
+          currentPrice: 99,
+          currency: 'USD',
+        },
+      ],
+    });
+    prisma.$transaction.mockImplementation(
+      async (callback: (client: typeof transaction) => unknown) =>
+        callback(transaction),
+    );
+    transaction.snapshot.create.mockResolvedValue({ id: 42, competitorId: 7 });
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        `<script type="application/ld+json">{"@type":"Product","name":${JSON.stringify(longTitle)},"offers":{"@type":"Offer","price":"84.95","priceCurrency":"USD"}}</script>`,
+    });
+
+    const result = await service.scrapeCompetitor(7);
+    const clippedName = longTitle.slice(0, 255);
+
+    expect(longTitle.length).toBeGreaterThan(255);
+    expect(result.capturedProducts).toEqual([
+      expect.objectContaining({
+        productId: 11,
+        name: clippedName,
+        price: 84.95,
+      }),
+    ]);
+    expect(transaction.product.update).toHaveBeenCalledWith({
+      where: { id: 11 },
+      data: expect.objectContaining({
+        name: clippedName,
+        currentPrice: 84.95,
+      }),
+    });
+    expect(transaction.snapshotProduct.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          snapshotId: 42,
+          productId: 11,
+          name: clippedName,
+        }),
+      ],
+    });
+    expect(clippedName).toHaveLength(255);
+  });
+
   it('prefers the real product offer over financing or monthly pricing values', async () => {
     prisma.competitor.findUnique.mockResolvedValue({
       id: 7,
