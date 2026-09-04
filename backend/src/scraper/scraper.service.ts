@@ -17,6 +17,7 @@ import {
   getScrapeProgress,
   startScrapeProgress,
 } from './scrape-progress';
+import { clipDbString, PRODUCT_NAME_MAX_CHARS } from './db-string';
 
 type ScrapedLink = {
   text: string;
@@ -181,7 +182,10 @@ export class ScraperService {
                   product,
                   price: extractedPrice.price,
                   currency: extractedPrice.currency,
-                  name: extractedPrice.title ?? product.name,
+                  name: clipDbString(
+                    extractedPrice.title ?? product.name,
+                    PRODUCT_NAME_MAX_CHARS,
+                  ),
                   availability: extractedPrice.availability ?? 'UNKNOWN',
                   scrapeMethod: extractedPrice.scrapeMethod,
                   imageUrl: extractedPrice.imageUrl,

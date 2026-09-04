@@ -88,6 +88,58 @@ describe('DiscoveryService', () => {
     });
   });
 
+  it('clips oversized catalog titles so VARCHAR(255) cannot abort discovery', async () => {
+    const longTitle = `Buy ${'Ultra '.repeat(80)}Canvas Tote`;
+    prisma.competitor.findUnique.mockResolvedValue({
+      id: 4,
+      url: 'https://colourpop.com',
+      products: [],
+    });
+    prisma.competitor.update.mockResolvedValue({});
+    prisma.product.create.mockResolvedValue({});
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: () =>
+          Promise.resolve(
+            '<script>window.Shopify = {shop:"colourpop.com"}</script>',
+          ),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            products: [
+              {
+                id: 11,
+                title: longTitle,
+                handle: 'canvas-tote',
+                variants: [],
+              },
+            ],
+          }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ products: [] }),
+      });
+
+    await service.discoverCompetitor(4);
+
+    expect(longTitle.length).toBeGreaterThan(255);
+    expect(prisma.product.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        name: longTitle.slice(0, 255),
+        externalId: '11',
+      }),
+    });
+    expect(
+      (prisma.product.create.mock.calls[0][0] as { data: { name: string } })
+        .data.name,
+    ).toHaveLength(255);
+  });
+
   it('rejects unsupported store URLs without creating products', async () => {
     prisma.competitor.findUnique.mockResolvedValue({
       id: 5,
