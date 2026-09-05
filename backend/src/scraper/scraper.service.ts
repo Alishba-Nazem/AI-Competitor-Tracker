@@ -11,6 +11,7 @@ import {
 } from './availability';
 import type { Availability } from './platform';
 import { extractJsonLdProduct } from './jsonld-extractor';
+import { DEFAULT_TIMEOUT_MS, withTimeout } from './http';
 import {
   bumpScrapeProgress,
   finishScrapeProgress,
@@ -727,8 +728,10 @@ export class ScraperService {
   }
 
   private async fetchJson<T>(url: string): Promise<T | undefined> {
+    const timeout = withTimeout(DEFAULT_TIMEOUT_MS);
     try {
       const response = await fetch(url, {
+        signal: timeout.signal,
         headers: {
           Accept: 'application/json',
           'User-Agent': 'Mozilla/5.0 (compatible; CompetitorTracker/1.0)',
@@ -738,22 +741,37 @@ export class ScraperService {
       return (await response.json()) as T;
     } catch {
       return undefined;
+    } finally {
+      timeout.clear();
     }
   }
 
   private async fetchHtml(url: string) {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151.0.0.0 Safari/537.36',
-      },
-    });
+    const timeout = withTimeout(DEFAULT_TIMEOUT_MS);
+    try {
+      const response = await fetch(url, {
+        signal: timeout.signal,
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151.0.0.0 Safari/537.36',
+        },
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch website. Status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch website. Status: ${response.status}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      if (isAbortError(error)) {
+        throw new Error(
+          `Timed out fetching website after ${DEFAULT_TIMEOUT_MS / 1000}s.`,
+        );
+      }
+      throw error;
+    } finally {
+      timeout.clear();
     }
-
-    return response.text();
   }
 
   private extractProductPrice(html: string): ExtractedPrice | undefined {
@@ -1121,4 +1139,8 @@ export class ScraperService {
     const currency = value.trim().toUpperCase();
     return /^[A-Z]{3}$/.test(currency) ? currency : undefined;
   }
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === 'AbortError';
 }

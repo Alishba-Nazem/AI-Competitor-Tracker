@@ -166,6 +166,36 @@ describe('CompetitorTrackingService', () => {
     });
   });
 
+  it('skips a new run while a previous tracking pass is still in flight', async () => {
+    let release!: (value: { captureLogId: number }) => void;
+    const hung = new Promise<{ captureLogId: number }>((resolve) => {
+      release = resolve;
+    });
+    prisma.competitor.findMany.mockResolvedValue([
+      { id: 1, name: 'Nike', captureFrequency: 'DAILY', lastCapturedAt: null },
+    ]);
+    discoveryService.discoverCompetitor.mockResolvedValue({});
+    scraperService.scrapeCompetitor.mockReturnValue(hung);
+    reviewScraperService.scrapeCompetitor.mockResolvedValue({ created: 0 });
+
+    const first = service.runActiveCompetitorTracking();
+    await Promise.resolve();
+    await expect(service.runActiveCompetitorTracking()).resolves.toEqual({
+      status: 'skipped',
+      processed: 0,
+      failed: 0,
+      skippedDue: 0,
+    });
+
+    release({ captureLogId: 1 });
+    await expect(first).resolves.toEqual({
+      status: 'completed',
+      processed: 1,
+      failed: 0,
+      skippedDue: 0,
+    });
+  });
+
   it('still completes price capture when review extraction fails', async () => {
     prisma.competitor.findMany.mockResolvedValue([
       { id: 1, name: 'Nike', captureFrequency: 'DAILY', lastCapturedAt: null },
