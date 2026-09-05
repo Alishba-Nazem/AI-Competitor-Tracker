@@ -1030,4 +1030,51 @@ describe('ScraperService', () => {
     });
     expect(prisma.$transaction).toHaveBeenCalled();
   });
+
+  it('times out a hung product page fetch instead of waiting forever', async () => {
+    jest.useFakeTimers();
+    prisma.competitor.findUnique.mockResolvedValue({
+      id: 50,
+      name: 'Hung Store',
+      url: 'https://hung.example.com',
+      products: [
+        {
+          id: 99,
+          name: 'Stuck SKU',
+          url: 'https://hung.example.com/product',
+          currentPrice: 10,
+          currency: 'USD',
+        },
+      ],
+    });
+    global.fetch = jest.fn().mockImplementation(
+      (_url: string, init?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            const error = new Error('The operation was aborted');
+            error.name = 'AbortError';
+            reject(error);
+          });
+        }),
+    );
+
+    try {
+      const scrapePromise = service.scrapeCompetitor(50);
+      const assertion = expect(scrapePromise).rejects.toBeInstanceOf(
+        BadGatewayException,
+      );
+      await jest.advanceTimersByTimeAsync(20_000);
+      await assertion;
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.captureLog.update).toHaveBeenCalledWith({
+        where: { id: 900 },
+        data: expect.objectContaining({
+          status: 'failed',
+          productsScraped: 0,
+        }),
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
