@@ -10,6 +10,11 @@ import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 
 const TOKEN_TTL = '7d';
+const DEV_FALLBACK_SECRET = 'ect-local-dev-secret';
+const INSECURE_JWT_SECRETS = new Set([
+  DEV_FALLBACK_SECRET,
+  'change-me-in-production',
+]);
 
 export type AuthUser = {
   id: number;
@@ -17,9 +22,46 @@ export type AuthUser = {
   email: string;
 };
 
+/**
+ * JWT signing key. The previous public fallback is only allowed in
+ * development/test so a production deploy cannot mint or accept tokens
+ * anyone can forge from this source tree.
+ */
+export function resolveJwtSecret(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const secret = env.JWT_SECRET?.trim() ?? '';
+  const nodeEnv = env.NODE_ENV?.trim() ?? '';
+  const allowInsecure =
+    nodeEnv === 'development' ||
+    nodeEnv === 'test' ||
+    env.ALLOW_INSECURE_JWT === '1';
+
+  if (!secret) {
+    if (!allowInsecure) {
+      throw new Error(
+        'JWT_SECRET is not set. Refusing to sign or verify sessions with a public fallback secret.',
+      );
+    }
+    return DEV_FALLBACK_SECRET;
+  }
+
+  if (INSECURE_JWT_SECRETS.has(secret) && !allowInsecure) {
+    throw new Error(
+      'JWT_SECRET is a known insecure placeholder. Set a long random value before signing sessions.',
+    );
+  }
+
+  return secret;
+}
+
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly jwtSecret: string;
+
+  constructor(private readonly prisma: PrismaService) {
+    this.jwtSecret = resolveJwtSecret();
+  }
 
   async signup(dto: SignupDto) {
     const email = dto.email.trim().toLowerCase();
@@ -62,7 +104,7 @@ export class AuthService {
 
   verifyToken(token: string): AuthUser {
     try {
-      const payload = jwt.verify(token, this.secret()) as {
+      const payload = jwt.verify(token, this.jwtSecret) as {
         sub?: number;
         name?: string;
         email?: string;
@@ -79,7 +121,7 @@ export class AuthService {
   private toAuthResponse(user: { id: number; name: string; email: string }) {
     const token = jwt.sign(
       { sub: user.id, name: user.name, email: user.email },
-      this.secret(),
+      this.jwtSecret,
       { expiresIn: TOKEN_TTL },
     );
 
@@ -89,7 +131,4 @@ export class AuthService {
     };
   }
 
-  private secret() {
-    return process.env.JWT_SECRET || 'ect-local-dev-secret';
-  }
 }
