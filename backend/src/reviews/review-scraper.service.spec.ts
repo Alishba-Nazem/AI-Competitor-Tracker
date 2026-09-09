@@ -8,7 +8,7 @@ describe('ReviewScraperService', () => {
   let service: ReviewScraperService;
   const prisma = {
     product: { findUnique: jest.fn(), update: jest.fn() },
-    review: { createMany: jest.fn() },
+    review: { createMany: jest.fn(), count: jest.fn() },
     competitor: { findUnique: jest.fn() },
   };
   const darazReviewAdapter = { scrape: jest.fn(), scrapeMany: jest.fn() };
@@ -16,6 +16,7 @@ describe('ReviewScraperService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    prisma.review.count.mockResolvedValue(0);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReviewScraperService,
@@ -155,5 +156,57 @@ describe('ReviewScraperService', () => {
       products.map((product) => product.url),
     );
     expect(result.processed).toBe(6);
+  });
+
+  it('does not mark a product unavailable when a failed recapture still has stored reviews', async () => {
+    prisma.product.findUnique.mockResolvedValue({
+      id: 12,
+      url: 'https://www.daraz.pk/products/bag-i430012403.html',
+      reviewsAvailable: true,
+      reviewSource: 'DARAZ',
+      competitor: { platform: 'DARAZ' },
+    });
+    prisma.review.count.mockResolvedValue(8);
+    darazReviewAdapter.scrape.mockResolvedValue({
+      available: false,
+      source: 'DARAZ',
+      reason: 'Review list API unavailable and browser fallback limit reached.',
+      reviews: [],
+    });
+
+    const result = await service.scrapeProduct(12);
+
+    expect(prisma.product.update).not.toHaveBeenCalled();
+    expect(prisma.review.createMany).not.toHaveBeenCalled();
+    expect(result.available).toBe(false);
+    expect(result.created).toBe(0);
+  });
+
+  it('still records unavailable when the product has never stored reviews', async () => {
+    prisma.product.findUnique.mockResolvedValue({
+      id: 12,
+      url: 'https://www.daraz.pk/products/bag-i430012403.html',
+      reviewsAvailable: null,
+      competitor: { platform: 'DARAZ' },
+    });
+    prisma.review.count.mockResolvedValue(0);
+    prisma.product.update.mockResolvedValue({});
+    darazReviewAdapter.scrape.mockResolvedValue({
+      available: false,
+      source: 'DARAZ',
+      reason: 'Review list API unavailable and browser fallback limit reached.',
+      reviews: [],
+    });
+
+    const result = await service.scrapeProduct(12);
+
+    expect(prisma.product.update).toHaveBeenCalledWith({
+      where: { id: 12 },
+      data: {
+        reviewsAvailable: false,
+        reviewSource: 'DARAZ',
+      },
+    });
+    expect(result.available).toBe(false);
   });
 });

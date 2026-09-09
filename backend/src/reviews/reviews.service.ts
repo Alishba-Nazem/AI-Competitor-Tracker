@@ -44,7 +44,7 @@ export class ReviewsService {
       const reviews = reviewsByProduct.get(product.id) ?? [];
       const summary = summarizeReviews(
         product.id,
-        product.reviewsAvailable !== false,
+        product.reviewsAvailable !== false || reviews.length > 0,
         product.reviewSource,
         reviews.map((review) => ({
           text: review.text,
@@ -70,7 +70,7 @@ export class ReviewsService {
     const reviews = await this.prisma.review.findMany({ where: { productId } });
     return summarizeReviews(
       productId,
-      product.reviewsAvailable !== false,
+      product.reviewsAvailable !== false || reviews.length > 0,
       product.reviewSource,
       reviews.map((review) => ({
         text: review.text,
@@ -81,7 +81,8 @@ export class ReviewsService {
 
   async insightsForProduct(productId: number) {
     const product = await this.ensureProduct(productId);
-    if (product.reviewsAvailable === false) {
+    const reviews = await this.prisma.review.findMany({ where: { productId } });
+    if (product.reviewsAvailable === false && reviews.length === 0) {
       return {
         productId,
         enoughData: false,
@@ -92,7 +93,6 @@ export class ReviewsService {
         complaints: [],
       };
     }
-    const reviews = await this.prisma.review.findMany({ where: { productId } });
     if (reviews.length === 0) {
       return {
         productId,

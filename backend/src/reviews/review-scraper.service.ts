@@ -161,13 +161,25 @@ export class ReviewScraperService implements OnModuleDestroy {
       throw new NotFoundException('Product not found');
     }
 
-    await this.prisma.product.update({
-      where: { id: product.id },
-      data: {
-        reviewsAvailable: result.available,
-        reviewSource: result.source,
-      },
+    const storedReviewCount = await this.prisma.review.count({
+      where: { productId: product.id },
     });
+    // A failed recapture (API blip, browser timeout, fallback cap) must not
+    // mark the product "unavailable" when reviews are already stored — the
+    // workspace summaries treat reviewsAvailable=false as zero reviews.
+    const preserveCapturedReviews =
+      result.available === false &&
+      (product.reviewsAvailable === true || storedReviewCount > 0);
+
+    if (!preserveCapturedReviews) {
+      await this.prisma.product.update({
+        where: { id: product.id },
+        data: {
+          reviewsAvailable: result.available,
+          reviewSource: result.source,
+        },
+      });
+    }
 
     const rows = result.reviews
       .filter((review) => review.text.trim().length > 0)
