@@ -11,6 +11,7 @@ import {
 } from './availability';
 import type { Availability } from './platform';
 import { extractJsonLdProduct } from './jsonld-extractor';
+import { isPersistableCapturedPrice } from './persistable-price';
 import {
   bumpScrapeProgress,
   finishScrapeProgress,
@@ -174,6 +175,12 @@ export class ScraperService {
                   });
                   throw new Error(
                     'PRICE_NOT_FOUND: no trustworthy purchase price available (platform scrapers and JSON-LD failed).',
+                  );
+                }
+
+                if (!isPersistableCapturedPrice(extractedPrice.price)) {
+                  throw new Error(
+                    'PRICE_NOT_FOUND: extracted price is outside the persistable Decimal(12,2) range.',
                   );
                 }
 
