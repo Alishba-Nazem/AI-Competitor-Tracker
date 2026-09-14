@@ -334,6 +334,86 @@ describe('ScraperService', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it('does not abort the snapshot when one SKU JSON-LD price overflows Decimal(12,2)', async () => {
+    prisma.competitor.findUnique.mockResolvedValue({
+      id: 7,
+      name: 'Example Store',
+      url: 'https://example.com',
+      products: [
+        {
+          id: 11,
+          name: 'Running Shoe',
+          url: 'https://example.com/shoe',
+          currentPrice: 99,
+          currency: 'USD',
+        },
+        {
+          id: 12,
+          name: 'Barcode as price',
+          url: 'https://example.com/barcode',
+          currentPrice: 50,
+          currency: 'USD',
+        },
+      ],
+    });
+    prisma.$transaction.mockImplementation(
+      async (callback: (client: typeof transaction) => unknown) =>
+        callback(transaction),
+    );
+    transaction.snapshot.create.mockResolvedValue({ id: 42, competitorId: 7 });
+    const overflowPrice = '8901234567890';
+    global.fetch = jest.fn(async (url: unknown) => {
+      const href = String(url);
+      if (href.includes('barcode')) {
+        return {
+          ok: true,
+          text: async () =>
+            `<script type="application/ld+json">{"@type":"Product","name":"Barcode as price","offers":{"@type":"Offer","price":"${overflowPrice}","priceCurrency":"USD"}}</script>`,
+        };
+      }
+      return {
+        ok: true,
+        text: async () =>
+          '<script type="application/ld+json">{"@type":"Product","offers":{"@type":"Offer","price":"84.95","priceCurrency":"USD"}}</script>',
+      };
+    });
+
+    const result = await service.scrapeCompetitor(7);
+
+    expect(overflowPrice.length).toBeGreaterThan(10);
+    expect(result.status).toBe('partial');
+    expect(result.capturedProducts).toEqual([
+      expect.objectContaining({
+        productId: 11,
+        price: 84.95,
+        currency: 'USD',
+      }),
+    ]);
+    expect(result.failedProducts).toEqual([
+      expect.objectContaining({
+        productId: 12,
+        name: 'Barcode as price',
+      }),
+    ]);
+    expect(transaction.product.update).toHaveBeenCalledTimes(1);
+    expect(transaction.product.update).toHaveBeenCalledWith({
+      where: { id: 11 },
+      data: expect.objectContaining({
+        currentPrice: 84.95,
+        currency: 'USD',
+      }),
+    });
+    expect(transaction.snapshotProduct.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          snapshotId: 42,
+          productId: 11,
+          price: 84.95,
+        }),
+      ],
+    });
+  });
+
   it('uses Shopify product JSON for a single variant and saves its canonical title', async () => {
     prisma.competitor.findUnique.mockResolvedValue({
       id: 20,
