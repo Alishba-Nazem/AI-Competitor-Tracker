@@ -9,14 +9,18 @@ import {
   Post,
   Query,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService } from './products.service';
 
 @Controller('products')
 @UseGuards(JwtAuthGuard)
+@UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
@@ -64,19 +68,9 @@ export class ProductsController {
   update(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseIntPipe) id: number,
-    @Body()
-    body: {
-      name?: string;
-      url?: string;
-      currentPrice?: number;
-      currency?: string;
-    },
+    @Body() body: UpdateProductDto,
   ) {
-    return this.productsService.update(user.id, id, {
-      ...body,
-      currentPrice:
-        body.currentPrice !== undefined ? Number(body.currentPrice) : undefined,
-    });
+    return this.productsService.update(user.id, id, body);
   }
 
   @Delete(':id')
